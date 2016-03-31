@@ -4,6 +4,7 @@
 #include "itkImageToVTKImageFilter.h"
 #include "vtkImageViewer.h"
 #include "vtkRenderWindowInteractor.h"
+#include "itkCurvatureFlowImageFilter.h"
 
 #include <iostream>
 
@@ -17,17 +18,28 @@ int main(int argc, char **argv) {
     ReaderType::Pointer reader = ReaderType::New();
     ConnectorType::Pointer connector = ConnectorType::New();
 
-    reader->SetFileName( "~/mic.jpg" );
+    reader->SetFileName(argv[1] );
+    try
+    {
+        reader->Update();
+    }
+    catch (itk::ExceptionObject &ex)
+    {
+        std::cout << ex << std::endl;
+    }
     connector->SetInput( reader->GetOutput() );
+    connector->Update();
 
     vtkImageViewer * viewer = vtkImageViewer::New();
     vtkRenderWindowInteractor * renderWindowInteractor = vtkRenderWindowInteractor::New();
 
     viewer->SetupInteractor( renderWindowInteractor );
     viewer->SetInputData(connector->GetOutput());
+
+    
     viewer->Render();
-    viewer->SetColorWindow( 20 );
-    viewer->SetColorLevel( 0 );
+    viewer->SetColorWindow( 255 );
+    viewer->SetColorLevel( 128 );
     renderWindowInteractor->Start();
 
 
