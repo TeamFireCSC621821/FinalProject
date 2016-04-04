@@ -12,7 +12,11 @@
 using namespace std;
 
 int main(int argc, char **argv) {
-    typedef itk::Image<unsigned short,2> ImageType;
+    //typedef itk::Image<unsigned short,2> ImageType;
+    typedef itk::Image< float , 2 > ImageType;
+    typedef itk::CurvatureFlowImageFilter<ImageType, ImageType> SmoothingFilterType;
+    SmoothingFilterType::Pointer smoother = SmoothingFilterType::New();
+
     typedef itk::ImageFileReader<ImageType> ReaderType;
     typedef itk::ImageToVTKImageFilter < ImageType> ConnectorType;
     ReaderType::Pointer reader = ReaderType::New();
@@ -27,7 +31,16 @@ int main(int argc, char **argv) {
     {
         std::cout << ex << std::endl;
     }
-    connector->SetInput( reader->GetOutput() );
+
+    smoother->SetInput( reader->GetOutput() );
+    smoother->SetNumberOfIterations(30 );
+    smoother->SetTimeStep( 0.1 );
+    smoother->Update();
+
+
+
+
+    connector->SetInput( smoother->GetOutput() );
     connector->Update();
 
     vtkImageViewer * viewer = vtkImageViewer::New();
@@ -36,7 +49,9 @@ int main(int argc, char **argv) {
     viewer->SetupInteractor( renderWindowInteractor );
     viewer->SetInputData(connector->GetOutput());
 
-    
+
+
+
     viewer->Render();
     viewer->SetColorWindow( 255 );
     viewer->SetColorLevel( 128 );
