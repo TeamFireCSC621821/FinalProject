@@ -6,6 +6,12 @@
 #include "vtkRenderWindowInteractor.h"
 #include "itkCurvatureFlowImageFilter.h"
 
+//For Edge Preserving Smoothing
+#include "itkGradientAnisotropicDiffusionImageFilter.h"
+
+//Threshold Segmentation
+#include "itkThresholdSegmentationLevelSetImageFilter.h"
+
 #include <iostream>
 
 
@@ -13,12 +19,23 @@ using namespace std;
 
 int main(int argc, char **argv) {
     //typedef itk::Image<unsigned short,2> ImageType;
-    typedef itk::Image< float , 2 > ImageType;
-    typedef itk::CurvatureFlowImageFilter<ImageType, ImageType> SmoothingFilterType;
-    SmoothingFilterType::Pointer smoother = SmoothingFilterType::New();
+    //typedef itk::Image< float , 2 > ImageType;
+    //typedef itk::CurvatureFlowImageFilter<ImageType, ImageType> SmoothingFilterType;
 
-    typedef itk::ImageFileReader<ImageType> ReaderType;
-    typedef itk::ImageToVTKImageFilter < ImageType> ConnectorType;
+    typedef float InputPixelType;
+    typedef float OutputPixelType;
+    typedef itk::Image< InputPixelType, 2 > InputImageType;
+    typedef itk::Image< OutputPixelType, 2 > OutputImageType;
+
+
+    typedef itk::GradientAnisotropicDiffusionImageFilter<InputImageType, OutputImageType > FilterType;
+    FilterType::Pointer filter = FilterType::New();
+
+
+
+
+    typedef itk::ImageFileReader<InputImageType> ReaderType;
+    typedef itk::ImageToVTKImageFilter < OutputImageType > ConnectorType;
     ReaderType::Pointer reader = ReaderType::New();
     ConnectorType::Pointer connector = ConnectorType::New();
 
@@ -32,15 +49,14 @@ int main(int argc, char **argv) {
         std::cout << ex << std::endl;
     }
 
-    smoother->SetInput( reader->GetOutput() );
-    smoother->SetNumberOfIterations(30 );
-    smoother->SetTimeStep( 0.1 );
-    smoother->Update();
+    filter->SetInput( reader->GetOutput() );
+    filter->SetNumberOfIterations( 5 );
+    filter->SetTimeStep( 0.125 );
+    filter->SetConductanceParameter( 3.0 );
+    filter->Update();
 
 
-
-
-    connector->SetInput( smoother->GetOutput() );
+    connector->SetInput( filter->GetOutput() );
     connector->Update();
 
     vtkImageViewer * viewer = vtkImageViewer::New();
