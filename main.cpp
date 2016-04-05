@@ -16,7 +16,6 @@
 #include "itkBinaryThresholdImageFilter.h"
 
 
-#include <iostream>
 
 
 using namespace std;
@@ -27,13 +26,14 @@ int main(int argc, char **argv) {
     //typedef itk::CurvatureFlowImageFilter<ImageType, ImageType> SmoothingFilterType;
 
     //Numbers to play with
-    int seedX = 607;
-    int seedY = 600;
+    int seedX = 200;
+    int seedY = 100;
     int lowerThreshold = 0;
-    int upperThreshold = 200;
+    int upperThreshold = 260;
+    const double initialDistance = 20;
 
     typedef float InputPixelType;
-    typedef unsigned char                            OutputPixelType;
+    typedef unsigned int                            OutputPixelType;
     typedef itk::Image< OutputPixelType, 2 > OutputImageType;
     typedef itk::Image< InputPixelType, 2 > InputImageType;
 
@@ -167,7 +167,7 @@ int main(int argc, char **argv) {
     //  command line arguments. The rule of thumb for the user is to select this
     //  value as the distance from the seed points at which he want the initial
     //  contour to be.
-    const double initialDistance = atof( argv[5] );
+
     NodeType node;
     const double seedValue = - initialDistance;
     node.SetValue( seedValue );
