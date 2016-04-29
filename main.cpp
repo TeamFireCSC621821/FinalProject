@@ -29,12 +29,18 @@
 #include <vtkColorTransferFunction.h>
 #include <vtkPiecewiseFunction.h>
 #include <vtkCamera.h>
+#include "itkBinaryThresholdImageFilter.h"
+#include "itkFastMarchingImageFilter.h"
+
 
 //For Edge Preserving Smoothing
+
 #include "itkGradientAnisotropicDiffusionImageFilter.h"
 
 //Threshold Segmentation
 #include "itkThresholdSegmentationLevelSetImageFilter.h"
+#include "itkOtsuThresholdImageFilter.h"
+#include "itkThresholdImageFilter.h"
 
 #include <iostream>
 
@@ -54,8 +60,8 @@ public:
 int main(int argc, char **argv) {
 
     const unsigned int      Dimension = 3;
-    typedef float InputPixelType;
-    typedef float  OutputPixelType;
+    typedef unsigned short InputPixelType;
+    typedef unsigned short  OutputPixelType;
     typedef itk::Image< InputPixelType, Dimension > InputImageType;
     typedef itk::Image< OutputPixelType, Dimension > OutputImageType;
 
@@ -132,27 +138,67 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    typedef itk::ImageToVTKImageFilter < InputImageType > ConnectorType;
-    ConnectorType::Pointer connector = ConnectorType::New();
 
-    connector->SetInput( filter->GetOutput() );
-    connector->Update();
+    /**
+    *
+    * SEGMENTATION
+    *
+    */
+
+
+
+
+    typedef itk::OtsuThresholdImageFilter<
+            OutputImageType, OutputImageType > ThresholdFilterType;
+
+    ThresholdFilterType::Pointer thresholdFilter = ThresholdFilterType::New();
+    thresholdFilter->SetInput(filter->GetOutput());
+
+
+    thresholdFilter->SetOutsideValue( 0 );
+    thresholdFilter->SetInsideValue(  6500  );
+
+    try
+    {
+        thresholdFilter->Update();
+    }
+    catch( itk::ExceptionObject & excp )
+    {
+        std::cerr << "Exception thrown " << excp << std::endl;
+    }
+
+    int threshold = thresholdFilter->GetThreshold();
+    std::cout << "Threshold = " << threshold << std::endl;
 
 
 
     /**
-     * VTK
-     *
-     */
+    *
+    * VTK
+    *
+    */
+
+
+    typedef itk::ImageToVTKImageFilter < OutputImageType > ConnectorType;
+    ConnectorType::Pointer connector = ConnectorType::New();
+
+    connector->SetInput( thresholdFilter->GetOutput() );
+    //connector->SetInput( filter->GetOutput() );
+    connector->Update();
+
+
+
+
     // Create the renderer, the render window, and the interactor. The renderer
     // draws into the render window, the interactor enables mouse- and
     // keyboard-based interaction with the scene.
+
     vtkSmartPointer<vtkRenderer> ren = vtkSmartPointer<vtkRenderer>::New();
     vtkSmartPointer<vtkRenderWindow> renWin = vtkSmartPointer<vtkRenderWindow>::New();
     renWin->AddRenderer(ren);
     vtkSmartPointer<vtkRenderWindowInteractor> iren = vtkSmartPointer<vtkRenderWindowInteractor>::New();
     iren->SetRenderWindow(renWin);
-    renWin->SetSize(1000, 1000);
+
 
 
     vtkSmartPointer<vtkFixedPointVolumeRayCastMapper> volumeMapper =
@@ -162,24 +208,24 @@ int main(int argc, char **argv) {
 
     vtkSmartPointer<vtkColorTransferFunction>volumeColor =
          vtkSmartPointer<vtkColorTransferFunction>::New();
-      // volumeColor->AddRGBPoint(0,    0.0, 0.0, 0.0);
-      // volumeColor->AddRGBPoint(500,  1.0, 0.5, 0.3);
-      // volumeColor->AddRGBPoint(1000, 1.0, 0.5, 0.3);
-      // volumeColor->AddRGBPoint(1150, 1.0, 1.0, 0.9);
-    volumeColor->AddRGBPoint(1150,    0.0, 0.0, 0.0);
-     volumeColor->AddRGBPoint(1000,  1.0, 0.5, 0.3);
-     volumeColor->AddRGBPoint(500, 1.0, 0.5, 0.3);
-     volumeColor->AddRGBPoint(0, 1.0, 1.0, 0.9);
+       volumeColor->AddRGBPoint(0,    0.0, 0.0, 0.0);
+       volumeColor->AddRGBPoint(500,  1.0, 0.5, 0.3);
+       volumeColor->AddRGBPoint(1000, 1.0, 0.5, 0.3);
+       volumeColor->AddRGBPoint(1150, 1.0, 1.0, 0.9);
+    //volumeColor->AddRGBPoint(1150,    0.0, 0.0, 0.0);
+    //volumeColor->AddRGBPoint(1000,  1.0, 0.5, 0.3);
+    //volumeColor->AddRGBPoint(500, 1.0, 0.5, 0.3);
+    //volumeColor->AddRGBPoint(0, 1.0, 1.0, 0.9);
 
 
     // The opacity transfer function is used to control the opacity
        // of different tissue types.
-       vtkSmartPointer<vtkPiecewiseFunction> volumeScalarOpacity =
+    vtkSmartPointer<vtkPiecewiseFunction> volumeScalarOpacity =
          vtkSmartPointer<vtkPiecewiseFunction>::New();
-        volumeScalarOpacity->AddPoint(0,    0.00);
-        volumeScalarOpacity->AddPoint(500,  0.15);
-        volumeScalarOpacity->AddPoint(1000, 0.15);
-        volumeScalarOpacity->AddPoint(1150, 0.85);
+    volumeScalarOpacity->AddPoint(0,    0.00);
+    volumeScalarOpacity->AddPoint(500,  0.15);
+    volumeScalarOpacity->AddPoint(1000, 0.15);
+    volumeScalarOpacity->AddPoint(1150, 0.85);
 
        // The gradient opacity function is used to decrease the opacity
        // in the "flat" regions of the volume while maintaining the opacity
@@ -211,25 +257,18 @@ int main(int argc, char **argv) {
        volume->SetProperty(volumeProperty);
 
        // Finally, add the volume to the renderer
-       ren->AddViewProp(volume);
-        ren->ResetCamera();
+     ren->SetBackground(1,1,1);
+     ren->AddViewProp(volume);
+     ren->ResetCamera();
 
-       // Set up an initial view of the volume.  The focal point will be the
-       // center of the volume, and the camera position will be 400mm to the
-       // patient's left (which is our right).
-       //vtkCamera *camera = ren->GetActiveCamera();
-       //double *c = volume->GetCenter();
-       //camera->SetFocalPoint(c[0], c[1], c[2]);
-       //camera->SetPosition(c[0] + 400, c[1], c[2]);
-       //camera->SetViewUp(0, 0, -4);
-       //camera->SetDistance(20);
+
 
       // Increase the size of the render window
-       renWin->SetSize(640, 480);
+     renWin->SetSize(640, 480);
 
       // Interact with the data.
-      iren->Initialize();
-       iren->Start();
+     iren->Initialize();
+     iren->Start();
 
     return 0;
 }
