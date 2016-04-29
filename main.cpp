@@ -1,5 +1,6 @@
 
 #include "itkImage.h"
+#include "CustomInteractor.h"
 #include "itkImageFileReader.h"
 #include "itkImageToVTKImageFilter.h"
 #include "vtkImageViewer.h"
@@ -19,6 +20,15 @@
 #include <vtkRenderer.h>
 #include <vtkRenderWindowInteractor.h>
 #include <vtkImageViewer2.h>
+#include <vtkTextProperty.h>
+#include <vtkTextMapper.h>
+#include <vtkImageShiftScale.h>
+#include <vtkImageClip.h>
+#include <vtkVolumeRayCastMapper.h>
+#include <vtkFixedPointVolumeRayCastMapper.h>
+#include <vtkColorTransferFunction.h>
+#include <vtkPiecewiseFunction.h>
+#include <vtkCamera.h>
 
 //For Edge Preserving Smoothing
 #include "itkGradientAnisotropicDiffusionImageFilter.h"
@@ -134,71 +144,90 @@ int main(int argc, char **argv) {
      * VTK
      *
      */
-
-    vtkSmartPointer<vtkImageSliceMapper> imageSliceMapper = vtkSmartPointer<vtkImageSliceMapper>::New();
-    //imageSliceMapper->SetInputConnection(importer->GetOutputPort());
-    imageSliceMapper->SetInputData(connector->GetOutput());
-
-    //imageSliceMapper->SetInputData(importer->GetOutput());
-    imageSliceMapper->Update();
-
-
-
-/*
-    vtkSmartPointer<vtkImageSlice> imageSlice = vtkSmartPointer<vtkImageSlice>::New();
-    imageSlice->SetMapper(imageSliceMapper);
-*/
+    // Create the renderer, the render window, and the interactor. The renderer
+    // draws into the render window, the interactor enables mouse- and
+    // keyboard-based interaction with the scene.
+    vtkSmartPointer<vtkRenderer> ren = vtkSmartPointer<vtkRenderer>::New();
+    vtkSmartPointer<vtkRenderWindow> renWin = vtkSmartPointer<vtkRenderWindow>::New();
+    renWin->AddRenderer(ren);
+    vtkSmartPointer<vtkRenderWindowInteractor> iren = vtkSmartPointer<vtkRenderWindowInteractor>::New();
+    iren->SetRenderWindow(renWin);
+    renWin->SetSize(1000, 1000);
 
 
-    vtkSmartPointer<vtkSmartVolumeMapper> volumeMapper = vtkSmartPointer<vtkSmartVolumeMapper>::New();
-    volumeMapper->SetBlendModeToComposite();
-    //volumeMapper->SetInputConnection(importer->GetOutputPort());
+    vtkSmartPointer<vtkFixedPointVolumeRayCastMapper> volumeMapper =
+            vtkSmartPointer<vtkFixedPointVolumeRayCastMapper>::New();
     volumeMapper->SetInputData(connector->GetOutput());
 
-    vtkSmartPointer<vtkVolumeProperty> volumeProperty = vtkSmartPointer<vtkVolumeProperty>::New();
-    volumeProperty->ShadeOff();
-    volumeProperty->SetInterpolationType(VTK_LINEAR_INTERPOLATION);
+
+    vtkSmartPointer<vtkColorTransferFunction>volumeColor =
+         vtkSmartPointer<vtkColorTransferFunction>::New();
+      // volumeColor->AddRGBPoint(0,    0.0, 0.0, 0.0);
+      // volumeColor->AddRGBPoint(500,  1.0, 0.5, 0.3);
+      // volumeColor->AddRGBPoint(1000, 1.0, 0.5, 0.3);
+      // volumeColor->AddRGBPoint(1150, 1.0, 1.0, 0.9);
+    volumeColor->AddRGBPoint(1150,    0.0, 0.0, 0.0);
+     volumeColor->AddRGBPoint(1000,  1.0, 0.5, 0.3);
+     volumeColor->AddRGBPoint(500, 1.0, 0.5, 0.3);
+     volumeColor->AddRGBPoint(0, 1.0, 1.0, 0.9);
 
 
+    // The opacity transfer function is used to control the opacity
+       // of different tissue types.
+       vtkSmartPointer<vtkPiecewiseFunction> volumeScalarOpacity =
+         vtkSmartPointer<vtkPiecewiseFunction>::New();
+        volumeScalarOpacity->AddPoint(0,    0.00);
+        volumeScalarOpacity->AddPoint(500,  0.15);
+        volumeScalarOpacity->AddPoint(1000, 0.15);
+        volumeScalarOpacity->AddPoint(1150, 0.85);
 
-    // Setup renderers
-    vtkSmartPointer<vtkRenderer> renderer = vtkSmartPointer<vtkRenderer>::New();
-    //renderer->AddViewProp(imageSlice);
-    renderer->ResetCamera();
-    renderer->SetBackground(0.1,0.4,0.2);
-
-    // Setup render window
-    vtkSmartPointer<vtkRenderWindow> renderWindow = vtkSmartPointer<vtkRenderWindow>::New();
-    renderWindow->SetSize(600, 600);
-    renderWindow->AddRenderer(renderer);
-
-
-
-    vtkSmartPointer<vtkVolume> volume = vtkSmartPointer<vtkVolume>::New();
-    volume->SetMapper(volumeMapper);
-    volume->SetProperty(volumeProperty);
-    renderer->AddViewProp(volume);
-
-
-
-    renderer->ResetCamera();
-    volumeMapper->SetRequestedRenderModeToRayCast();
-    volumeMapper->SetBlendModeToMinimumIntensity();
-
-    renderWindow->Render();
-
-    vtkSmartPointer<vtkRenderWindowInteractor> renderWindowInteractor =
-            vtkSmartPointer<vtkRenderWindowInteractor>::New();
-
-    // Render and start interaction
-    renderWindowInteractor->SetRenderWindow(renderWindow);
-    renderWindowInteractor->Initialize();
-
-    renderWindowInteractor->Start();
+       // The gradient opacity function is used to decrease the opacity
+       // in the "flat" regions of the volume while maintaining the opacity
+       // at the boundaries between tissue types.  The gradient is measured
+       // as the amount by which the intensity changes over unit distance.
+       // For most medical data, the unit distance is 1mm.
+       vtkSmartPointer<vtkPiecewiseFunction> volumeGradientOpacity =
+         vtkSmartPointer<vtkPiecewiseFunction>::New();
+       volumeGradientOpacity->AddPoint(0,   0.0);
+       volumeGradientOpacity->AddPoint(90,  0.5);
+       volumeGradientOpacity->AddPoint(100, 1.0);
 
 
+       vtkSmartPointer<vtkVolumeProperty> volumeProperty =
+         vtkSmartPointer<vtkVolumeProperty>::New();
+       volumeProperty->SetColor(volumeColor);
+       volumeProperty->SetScalarOpacity(volumeScalarOpacity);
+       volumeProperty->SetGradientOpacity(volumeGradientOpacity);
+       volumeProperty->SetInterpolationTypeToLinear();
+       volumeProperty->ShadeOn();
+       volumeProperty->SetAmbient(0.4);
+       volumeProperty->SetDiffuse(0.6);
+       volumeProperty->SetSpecular(0.2);
+       // The vtkVolume is a vtkProp3D (like a vtkActor) and controls the position
+       // and orientation of the volume in world coordinates.
+       vtkSmartPointer<vtkVolume> volume =
+        vtkSmartPointer<vtkVolume>::New();
+       volume->SetMapper(volumeMapper);
+       volume->SetProperty(volumeProperty);
 
+       // Finally, add the volume to the renderer
+       ren->AddViewProp(volume);
 
+       // Set up an initial view of the volume.  The focal point will be the
+       // center of the volume, and the camera position will be 400mm to the
+       // patient's left (which is our right).
+       vtkCamera *camera = ren->GetActiveCamera();
+       double *c = volume->GetCenter();
+       camera->SetFocalPoint(c[0], c[1], c[2]);
+       camera->SetPosition(c[0] + 400, c[1], c[2]);
+       camera->SetViewUp(0, 0, -4);
+
+      // Increase the size of the render window
+       renWin->SetSize(640, 480);
+
+      // Interact with the data.
+      iren->Initialize();
+       iren->Start();
 
     return 0;
 }
