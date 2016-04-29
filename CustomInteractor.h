@@ -1,0 +1,14 @@
+//
+// Created by mac on 4/29/16.
+//
+
+#ifndef FINALPROJECTBIOMED_CUSTOMINTERACTOR_H
+#define FINALPROJECTBIOMED_CUSTOMINTERACTOR_H
+
+
+class CustomInteractor {
+
+};
+
+
+#endif //FINALPROJECTBIOMED_CUSTOMINTERACTOR_H

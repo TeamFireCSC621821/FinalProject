@@ -212,15 +212,17 @@ int main(int argc, char **argv) {
 
        // Finally, add the volume to the renderer
        ren->AddViewProp(volume);
+        ren->ResetCamera();
 
        // Set up an initial view of the volume.  The focal point will be the
        // center of the volume, and the camera position will be 400mm to the
        // patient's left (which is our right).
-       vtkCamera *camera = ren->GetActiveCamera();
-       double *c = volume->GetCenter();
-       camera->SetFocalPoint(c[0], c[1], c[2]);
-       camera->SetPosition(c[0] + 400, c[1], c[2]);
-       camera->SetViewUp(0, 0, -4);
+       //vtkCamera *camera = ren->GetActiveCamera();
+       //double *c = volume->GetCenter();
+       //camera->SetFocalPoint(c[0], c[1], c[2]);
+       //camera->SetPosition(c[0] + 400, c[1], c[2]);
+       //camera->SetViewUp(0, 0, -4);
+       //camera->SetDistance(20);
 
       // Increase the size of the render window
        renWin->SetSize(640, 480);
