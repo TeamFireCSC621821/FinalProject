@@ -92,6 +92,7 @@ public:
 protected:
     vtkImageViewer2* _ImageViewer;
     vtkTextMapper* _StatusMapper;
+    vtkImageMapper* _ImageMapper;
     int _Slice;
     int _MinSlice;
     int _MaxSlice;
@@ -102,11 +103,15 @@ public:
         _MinSlice = imageViewer->GetSliceMin();
         _MaxSlice = imageViewer->GetSliceMax();
         _Slice = _MinSlice;
-        cout << "Slicer: Min = " << _MinSlice << ", Max = " << _MaxSlice << std::endl;
+        //cout << "Slicer: Min = " << _MinSlice << ", Max = " << _MaxSlice << std::endl;
     }
 
     void SetStatusMapper(vtkTextMapper* statusMapper) {
         _StatusMapper = statusMapper;
+    }
+
+    void SetPostImageViewer(vtkImageMapper* imageMapper){
+        _ImageMapper = imageMapper;
     }
 
 
@@ -116,9 +121,11 @@ protected:
             _Slice += 1;
             cout << "MoveSliceForward::Slice = " << _Slice << std::endl;
             _ImageViewer->SetSlice(_Slice);
+            _ImageMapper->SetZSlice(_Slice);
             std::string msg = StatusMessage::Format(_Slice, _MaxSlice);
             _StatusMapper->SetInput(msg.c_str());
             _ImageViewer->Render();
+
         }
     }
 
@@ -127,6 +134,7 @@ protected:
             _Slice -= 1;
             cout << "MoveSliceBackward::Slice = " << _Slice << std::endl;
             _ImageViewer->SetSlice(_Slice);
+            _ImageMapper->SetZSlice(_Slice);
             std::string msg = StatusMessage::Format(_Slice, _MaxSlice);
             _StatusMapper->SetInput(msg.c_str());
             _ImageViewer->Render();
@@ -519,9 +527,15 @@ int main(int argc, char **argv) {
             vtkSmartPointer<vtkImageViewer2>::New();
     imageViewer->SetInputData(originalSliceConnector->GetOutput());
 
-    vtkSmartPointer<vtkImageViewer2> imageViewerPost =
-            vtkSmartPointer<vtkImageViewer2>::New();
-    imageViewerPost->SetInputData(connector->GetOutput());
+    vtkSmartPointer<vtkRenderer> rendererPost = vtkSmartPointer<vtkRenderer>::New();
+    vtkSmartPointer<vtkImageMapper> imageMapperPost = vtkSmartPointer<vtkImageMapper>::New();
+    imageMapperPost->SetInputData(connector->GetOutput());
+
+    vtkSmartPointer<vtkActor2D> imageActorPost = vtkSmartPointer<vtkActor2D>::New();
+    imageActorPost ->SetMapper(imageMapperPost);
+    rendererPost->AddActor2D(imageActorPost);
+
+
 
     // slice status message
     vtkSmartPointer<vtkTextProperty> sliceTextProp = vtkSmartPointer<vtkTextProperty>::New();
@@ -572,20 +586,22 @@ int main(int argc, char **argv) {
     // make imageviewer2 and sliceTextMapper visible to our interactorstyle
     // to enable slice status message updates when scrolling through the slices
     myInteractorStyle->SetImageViewer(imageViewer);
+    myInteractorStyle->SetPostImageViewer(imageMapperPost);
     myInteractorStyle->SetStatusMapper(sliceTextMapper);
 
     imageViewer->SetupInteractor(renderWindowInteractor);
-    imageViewerPost->SetupInteractor(renderWindowInteractor);
+    //imageViewerPost->SetupInteractor(renderWindowInteractor);
     // make the interactor use our own interactorstyle
     // cause SetupInteractor() is defining it's own default interatorstyle
     // this must be called after SetupInteractor()
     renderWindowInteractor->SetInteractorStyle(myInteractorStyle);
     // add slice status message and usage hint message to the renderer
     imageViewer->GetRenderer()->AddActor2D(sliceTextActor);
-    imageViewer->GetRenderer()->AddActor2D(usageTextActor);
+    //imageViewer->GetRenderer()->AddActor2D(usageTextActor);
     imageViewer->GetRenderer()->SetViewport(xmins2[0],ymins2[0],xmaxs2[0],ymaxs2[0]);
-    imageViewer->GetRenderWindow()->AddRenderer(imageViewerPost->GetRenderer());
-    imageViewerPost->GetRenderer()->SetViewport(xmins2[1],ymins2[1],xmaxs2[1],ymaxs2[1]);
+    imageViewer->GetRenderWindow()->AddRenderer(rendererPost);
+    rendererPost->SetViewport(xmins2[1],ymins2[1],xmaxs2[1],ymaxs2[1]);
+    //rendererPost->SetBackground(0.5,0.5,0.5);
 
 
     // initialize rendering and interaction
@@ -595,9 +611,9 @@ int main(int argc, char **argv) {
     imageViewer->GetRenderer()->ResetCamera();
     imageViewer->Render();
 
-    imageViewerPost->Render();
-    imageViewerPost->GetRenderer()->ResetCamera();
-    imageViewerPost->Render();
+    rendererPost->Render();
+    rendererPost->ResetCamera();
+    rendererPost->Render();
     //renderWindowInteractor->Start();
 
 
