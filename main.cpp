@@ -31,6 +31,8 @@
 #include <vtkCamera.h>
 #include "itkBinaryThresholdImageFilter.h"
 #include "itkFastMarchingImageFilter.h"
+#include "itkConnectedComponentImageFilter.h"
+#include "itkLabelToRGBImageFilter.h"
 
 
 //For Edge Preserving Smoothing
@@ -48,6 +50,20 @@
 
 using namespace std;
 
+// Define viewport ranges
+double xmins[4] = {0,.5,0,.5};
+double xmaxs[4] = {0.5,1,0.5,1};
+double ymins[4] = {0,0,.5,.5};
+double ymaxs[4]= {0.5,0.5,1,1};
+
+
+const unsigned int      Dimension = 3;
+typedef float InputPixelType;
+typedef float  OutputPixelType;
+typedef itk::Image< InputPixelType, Dimension > InputImageType;
+typedef itk::Image< OutputPixelType, Dimension > OutputImageType;
+typedef itk::ImageToVTKImageFilter < InputImageType > ConnectorType;
+
 // helper class to format slice status message
 class StatusMessage {
 public:
@@ -58,13 +74,11 @@ public:
     }
 };
 
-int main(int argc, char **argv) {
 
-    const unsigned int      Dimension = 3;
-    typedef float InputPixelType;
-    typedef float  OutputPixelType;
-    typedef itk::Image< InputPixelType, Dimension > InputImageType;
-    typedef itk::Image< OutputPixelType, Dimension > OutputImageType;
+
+int main(int argc, char **argv) {
+    std::vector<vtkSmartPointer<vtkRenderWindowInteractor> > interactors;
+
 
     //typedef itk::Image< InputPixelType, Dimension > ImageType;
     typedef itk::ImageSeriesReader< InputImageType >        ReaderType;
@@ -123,7 +137,7 @@ int main(int argc, char **argv) {
     FilterType::Pointer filter = FilterType::New();
 
     filter->SetInput( reader->GetOutput() );
-    filter->SetNumberOfIterations( 5 );
+    filter->SetNumberOfIterations( 1 );
     filter->SetTimeStep( 0.01 );
     filter->SetConductanceParameter( 3.0 );
 
@@ -146,36 +160,101 @@ int main(int argc, char **argv) {
     *
     */
 
-    /*
+
 
     typedef itk::BinaryThresholdImageFilter <InputImageType, InputImageType>
             BinaryThresholdImageFilterType;
 
-    BinaryThresholdImageFilterType::Pointer thresholdFilter
+    BinaryThresholdImageFilterType::Pointer binaryThresholdFilter
             = BinaryThresholdImageFilterType::New();
-    thresholdFilter->SetInput(reader->GetOutput());
-    thresholdFilter->SetLowerThreshold(500);
+    binaryThresholdFilter->SetInput(reader->GetOutput());
+    binaryThresholdFilter->SetLowerThreshold(500);
     //thresholdFilter->SetUpperThreshold(upperThreshold);
     //thresholdFilter->SetInsideValue(255);
     //thresholdFilter->SetOutsideValue(0);
+
+
+    typedef itk::ThresholdImageFilter <InputImageType>
+            ThresholdImageFilterType;
+
+    ThresholdImageFilterType::Pointer thresholdFilter
+            = ThresholdImageFilterType::New();
+    thresholdFilter->SetInput(filter->GetOutput());
+    //thresholdFilter->ThresholdOutside(lowerThreshold, upperThreshold);
+    thresholdFilter->SetLower(400);
+    thresholdFilter->SetOutsideValue(0);
+
+
+
+
+
+    /**
+     *
+     * Connected Components
+     *
+     */
+
+    //typedef itk::RGBPixel<unsigned char>         RGBPixelType;
+    //typedef itk::Image<RGBPixelType, Dimension>  RGBImageType;
+/*
+    typedef unsigned char                       PixelType;
+    typedef itk::RGBPixel<unsigned char>         RGBPixelType;
+    typedef itk::Image<PixelType, Dimension>     ImageType;
+    typedef itk::Image<RGBPixelType, Dimension>  RGBImageType;
+
+    typedef itk::Image< unsigned short, Dimension > OutputImageType2;
+
+    typedef itk::ConnectedComponentImageFilter <InputImageType, OutputImageType2 >
+            ConnectedComponentImageFilterType;
+
+    ConnectedComponentImageFilterType::Pointer connected =
+            ConnectedComponentImageFilterType::New ();
+    connected->SetInput(thresholdFilter->GetOutput() );
+    connected->Update();
+
+    std::cout << "Number of objects: " << connected->GetObjectCount() << std::endl;
+
+    typedef itk::LabelToRGBImageFilter<OutputImageType2, RGBImageType> RGBFilterType;
+    RGBFilterType::Pointer rgbFilter = RGBFilterType::New();
+    rgbFilter->SetInput( connected->GetOutput() );
+
 */
-
-
     /**
     *
     * VTK
     *
     */
 
+    //typedef itk::ImageToVTKImageFilter < RGBImageType > ConnectorType;
+    ConnectorType::Pointer rawConnector = ConnectorType::New();
+    //connector->SetInput( rgbFilter->GetOutput() );
+    rawConnector->SetInput( reader->GetOutput() );
+    //connector->SetInput( filter->GetOutput() );
+    //connector->SetInput( reader->GetOutput() );
+    rawConnector->Update();
 
-    typedef itk::ImageToVTKImageFilter < OutputImageType > ConnectorType;
+
+
+    ConnectorType::Pointer binaryThresholdConnector = ConnectorType::New();
+    binaryThresholdConnector->SetInput( binaryThresholdFilter->GetOutput() );
+    binaryThresholdConnector->Update();
+
+
+
+
+    //typedef itk::ImageToVTKImageFilter < RGBImageType > ConnectorType;
     ConnectorType::Pointer connector = ConnectorType::New();
-
+    //connector->SetInput( rgbFilter->GetOutput() );
     connector->SetInput( thresholdFilter->GetOutput() );
     //connector->SetInput( filter->GetOutput() );
     //connector->SetInput( reader->GetOutput() );
     connector->Update();
 
+    vtkSmartPointer<vtkRenderWindow> renWin = vtkSmartPointer<vtkRenderWindow>::New();
+    vtkSmartPointer<vtkRenderWindowInteractor> iren = vtkSmartPointer<vtkRenderWindowInteractor>::New();
+
+    interactors.push_back(iren);
+    iren->SetRenderWindow(renWin);
 
 
 
@@ -184,16 +263,37 @@ int main(int argc, char **argv) {
     // keyboard-based interaction with the scene.
 
     vtkSmartPointer<vtkRenderer> ren = vtkSmartPointer<vtkRenderer>::New();
-    vtkSmartPointer<vtkRenderWindow> renWin = vtkSmartPointer<vtkRenderWindow>::New();
+
+
+    vtkSmartPointer<vtkRenderer> rendererVolOriginal = vtkSmartPointer<vtkRenderer>::New();
+    vtkSmartPointer<vtkRenderer> rendererBinaryOutput = vtkSmartPointer<vtkRenderer>::New();
+
+
+
+    renWin->AddRenderer(rendererVolOriginal);
+    rendererVolOriginal->SetViewport(xmins[2],ymins[2],xmaxs[2],ymaxs[2]);
+
     renWin->AddRenderer(ren);
-    vtkSmartPointer<vtkRenderWindowInteractor> iren = vtkSmartPointer<vtkRenderWindowInteractor>::New();
-    iren->SetRenderWindow(renWin);
+    ren->SetViewport(xmins[3],ymins[3],xmaxs[3],ymaxs[3]);
+
+    renWin->AddRenderer(rendererBinaryOutput);
+    rendererBinaryOutput->SetViewport(xmins[1],ymins[1],xmaxs[1],ymaxs[1]);
+
+
 
 
 
     vtkSmartPointer<vtkFixedPointVolumeRayCastMapper> volumeMapper =
             vtkSmartPointer<vtkFixedPointVolumeRayCastMapper>::New();
     volumeMapper->SetInputData(connector->GetOutput());
+
+    vtkSmartPointer<vtkFixedPointVolumeRayCastMapper> volumeMapperOriginal =
+            vtkSmartPointer<vtkFixedPointVolumeRayCastMapper>::New();
+    volumeMapperOriginal->SetInputData(rawConnector->GetOutput());
+
+    vtkSmartPointer<vtkFixedPointVolumeRayCastMapper> volumeMapperBinary =
+            vtkSmartPointer<vtkFixedPointVolumeRayCastMapper>::New();
+    volumeMapperBinary->SetInputData(binaryThresholdConnector->GetOutput());
 
 
     vtkSmartPointer<vtkColorTransferFunction>volumeColor =
@@ -251,19 +351,47 @@ int main(int argc, char **argv) {
        volume->SetMapper(volumeMapper);
        volume->SetProperty(volumeProperty);
 
+
+    vtkSmartPointer<vtkVolume> volumeOriginal =
+            vtkSmartPointer<vtkVolume>::New();
+    volumeOriginal->SetMapper(volumeMapperOriginal);
+    volumeOriginal->SetProperty(volumeProperty);
+
+
+    vtkSmartPointer<vtkVolume> volumeBinary =
+            vtkSmartPointer<vtkVolume>::New();
+    volumeBinary->SetMapper(volumeMapperBinary);
+    volumeBinary->SetProperty(volumeProperty);
+
        // Finally, add the volume to the renderer
      ren->SetBackground(1,1,1);
      ren->AddViewProp(volume);
      ren->ResetCamera();
 
+    rendererVolOriginal ->SetBackground(1,1,1);
+    rendererVolOriginal ->AddViewProp(volumeOriginal);
+    rendererVolOriginal ->ResetCamera();
+
+    rendererBinaryOutput ->SetBackground(1,1,1);
+    rendererBinaryOutput ->AddViewProp(volumeBinary);
+    rendererBinaryOutput ->ResetCamera();
+
 
 
       // Increase the size of the render window
-     renWin->SetSize(640, 480);
+     renWin->SetSize(1000, 1000);
+    renWin->Render();
 
       // Interact with the data.
-     iren->Initialize();
-     iren->Start();
+     //iren->Initialize();
+     //iren->Start();
+    interactors[0]->Start();
+
+
+
+
 
     return 0;
 }
+
+
