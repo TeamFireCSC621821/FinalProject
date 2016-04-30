@@ -41,6 +41,7 @@
 #include "itkThresholdSegmentationLevelSetImageFilter.h"
 #include "itkOtsuThresholdImageFilter.h"
 #include "itkThresholdImageFilter.h"
+#include "itkBinaryThresholdImageFilter.h"
 
 #include <iostream>
 
@@ -60,8 +61,8 @@ public:
 int main(int argc, char **argv) {
 
     const unsigned int      Dimension = 3;
-    typedef unsigned short InputPixelType;
-    typedef unsigned short  OutputPixelType;
+    typedef float InputPixelType;
+    typedef float  OutputPixelType;
     typedef itk::Image< InputPixelType, Dimension > InputImageType;
     typedef itk::Image< OutputPixelType, Dimension > OutputImageType;
 
@@ -122,7 +123,7 @@ int main(int argc, char **argv) {
     FilterType::Pointer filter = FilterType::New();
 
     filter->SetInput( reader->GetOutput() );
-    filter->SetNumberOfIterations( 1 );
+    filter->SetNumberOfIterations( 5 );
     filter->SetTimeStep( 0.01 );
     filter->SetConductanceParameter( 3.0 );
 
@@ -145,31 +146,19 @@ int main(int argc, char **argv) {
     *
     */
 
+    /*
 
+    typedef itk::BinaryThresholdImageFilter <InputImageType, InputImageType>
+            BinaryThresholdImageFilterType;
 
-
-    typedef itk::OtsuThresholdImageFilter<
-            OutputImageType, OutputImageType > ThresholdFilterType;
-
-    ThresholdFilterType::Pointer thresholdFilter = ThresholdFilterType::New();
-    thresholdFilter->SetInput(filter->GetOutput());
-
-
-    thresholdFilter->SetOutsideValue( 0 );
-    thresholdFilter->SetInsideValue(  6500  );
-
-    try
-    {
-        thresholdFilter->Update();
-    }
-    catch( itk::ExceptionObject & excp )
-    {
-        std::cerr << "Exception thrown " << excp << std::endl;
-    }
-
-    int threshold = thresholdFilter->GetThreshold();
-    std::cout << "Threshold = " << threshold << std::endl;
-
+    BinaryThresholdImageFilterType::Pointer thresholdFilter
+            = BinaryThresholdImageFilterType::New();
+    thresholdFilter->SetInput(reader->GetOutput());
+    thresholdFilter->SetLowerThreshold(500);
+    //thresholdFilter->SetUpperThreshold(upperThreshold);
+    //thresholdFilter->SetInsideValue(255);
+    //thresholdFilter->SetOutsideValue(0);
+*/
 
 
     /**
@@ -184,6 +173,7 @@ int main(int argc, char **argv) {
 
     connector->SetInput( thresholdFilter->GetOutput() );
     //connector->SetInput( filter->GetOutput() );
+    //connector->SetInput( reader->GetOutput() );
     connector->Update();
 
 
@@ -208,14 +198,14 @@ int main(int argc, char **argv) {
 
     vtkSmartPointer<vtkColorTransferFunction>volumeColor =
          vtkSmartPointer<vtkColorTransferFunction>::New();
-       volumeColor->AddRGBPoint(0,    0.0, 0.0, 0.0);
-       volumeColor->AddRGBPoint(500,  1.0, 0.5, 0.3);
-       volumeColor->AddRGBPoint(1000, 1.0, 0.5, 0.3);
-       volumeColor->AddRGBPoint(1150, 1.0, 1.0, 0.9);
-    //volumeColor->AddRGBPoint(1150,    0.0, 0.0, 0.0);
-    //volumeColor->AddRGBPoint(1000,  1.0, 0.5, 0.3);
-    //volumeColor->AddRGBPoint(500, 1.0, 0.5, 0.3);
-    //volumeColor->AddRGBPoint(0, 1.0, 1.0, 0.9);
+       //volumeColor->AddRGBPoint(0,    0.0, 0.0, 0.0);
+       //volumeColor->AddRGBPoint(500,  1.0, 0.5, 0.3);
+      // volumeColor->AddRGBPoint(1000, 1.0, 0.5, 0.3);
+    //   volumeColor->AddRGBPoint(1150, 1.0, 1.0, 0.9);
+    volumeColor->AddRGBPoint(1150,    0.0, 0.0, 0.0);
+    volumeColor->AddRGBPoint(1000,  1.0, 0.5, 0.3);
+    volumeColor->AddRGBPoint(500, 1.0, 0.5, 0.3);
+    volumeColor->AddRGBPoint(0, 1.0, 1.0, 0.9);
 
 
     // The opacity transfer function is used to control the opacity
@@ -226,6 +216,11 @@ int main(int argc, char **argv) {
     volumeScalarOpacity->AddPoint(500,  0.15);
     volumeScalarOpacity->AddPoint(1000, 0.15);
     volumeScalarOpacity->AddPoint(1150, 0.85);
+
+    //volumeScalarOpacity->AddPoint(1150,    0.00);
+    //volumeScalarOpacity->AddPoint(1000,  0.15);
+    //volumeScalarOpacity->AddPoint(500, 0.15);
+    //volumeScalarOpacity->AddPoint(0, 0.85);
 
        // The gradient opacity function is used to decrease the opacity
        // in the "flat" regions of the volume while maintaining the opacity
