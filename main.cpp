@@ -368,6 +368,8 @@ int main(int argc, char **argv) {
      ren->AddViewProp(volume);
      ren->ResetCamera();
 
+
+
     rendererVolOriginal ->SetBackground(1,1,1);
     rendererVolOriginal ->AddViewProp(volumeOriginal);
     rendererVolOriginal ->ResetCamera();
@@ -375,6 +377,11 @@ int main(int argc, char **argv) {
     rendererBinaryOutput ->SetBackground(1,1,1);
     rendererBinaryOutput ->AddViewProp(volumeBinary);
     rendererBinaryOutput ->ResetCamera();
+
+
+    rendererVolOriginal->SetActiveCamera(rendererBinaryOutput->GetActiveCamera());
+    ren->SetActiveCamera(rendererVolOriginal->GetActiveCamera());
+
 
 
 
