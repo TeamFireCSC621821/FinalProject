@@ -1,4 +1,5 @@
-
+#include "itkScalarConnectedComponentImageFilter.h"
+#include "itkRelabelComponentImageFilter.h"
 #include "itkImage.h"
 #include "itkImageFileReader.h"
 #include "itkImageToVTKImageFilter.h"
@@ -63,10 +64,10 @@ double ymins[4] = {0,0,.5,.5};
 double ymaxs[4]= {0.5,0.5,1,1};
 
 // Define viewport ranges
-double xmins2[2] = {0,.5};
-double xmaxs2[2] = {0.5,1};
-double ymins2[2] = {0,0};
-double ymaxs2[2]= {1,1};
+double xmins2[3] = {0,0.33 , 0.66};
+double xmaxs2[3] = {0.33,0.66,1};
+double ymins2[3] = {0,0,0};
+double ymaxs2[3]= {1,1,1};
 
 
 const unsigned int      Dimension = 3;
@@ -99,6 +100,8 @@ protected:
     vtkImageMapper* _ImageMapperRight;
     vtkRenderer* _ImageRendererLeft;
     vtkRenderer* _ImageRendererRight;
+    vtkImageMapper* _ImageMapperRight2;
+    vtkRenderer* _ImageRendererRight2;
     vtkRenderWindow* _RenderWindow;
 
     int _Slice;
@@ -131,8 +134,16 @@ public:
         _ImageMapperRight = imageMapper;
     }
 
+    void SetMapper3(vtkImageMapper* imageMapper){
+        _ImageMapperRight2 = imageMapper;
+    }
+
     void SetRenderer1(vtkRenderer* imageRenderer){
         _ImageRendererLeft = imageRenderer;
+    }
+
+    void SetRenderer3(vtkRenderer* imageRenderer){
+        _ImageRendererRight2 = imageRenderer;
     }
 
     void SetRenderer2(vtkRenderer* imageRenderer){
@@ -154,6 +165,9 @@ protected:
             _ImageMapperLeft->SetZSlice(_Slice);
             _ImageRendererLeft->Render();
             _ImageRendererRight->Render();
+
+            _ImageMapperRight2->SetZSlice(_Slice);
+            _ImageRendererRight2->Render();
             _RenderWindow->Render();
             std::string msg = StatusMessage::Format(_Slice, _MaxSlice);
             //_StatusMapper->SetInput(msg.c_str());
@@ -171,6 +185,9 @@ protected:
             //_ImageViewer->SetSlice(_Slice);
             _ImageMapperLeft->SetZSlice(_Slice);
             _ImageMapperRight->SetZSlice(_Slice);
+            _ImageMapperRight2->SetZSlice(_Slice);
+            _ImageRendererRight2->Render();
+
             _RenderWindow->Render();
             //std::string msg = StatusMessage::Format(_Slice, _MaxSlice);
             //_StatusMapper->SetInput(msg.c_str());
@@ -237,7 +254,7 @@ int main(int argc, char **argv) {
 
     //nameGenerator->SetUseSeriesDetails( true );
     //nameGenerator->AddSeriesRestriction("0008|0021" );
-    nameGenerator->SetDirectory( "/Users/mac/DICOMSLIDES");
+    nameGenerator->SetDirectory( "/Users/mac/DICOMSLIDES/DCOM_7");
 
 /*
     typedef float InputPixelType;
@@ -322,7 +339,7 @@ int main(int argc, char **argv) {
     BinaryThresholdImageFilterType::Pointer binaryThresholdFilter
             = BinaryThresholdImageFilterType::New();
     binaryThresholdFilter->SetInput(filter->GetOutput());
-    binaryThresholdFilter->SetLowerThreshold(300);
+    binaryThresholdFilter->SetLowerThreshold(200);
     //thresholdFilter->SetUpperThreshold(upperThreshold);
     //thresholdFilter->SetInsideValue(255);
     //thresholdFilter->SetOutsideValue(0);
@@ -336,7 +353,7 @@ int main(int argc, char **argv) {
             = ThresholdImageFilterType::New();
     thresholdFilter->SetInput(filter->GetOutput());
     //thresholdFilter->ThresholdOutside(lowerThreshold, upperThreshold);
-    thresholdFilter->SetLower(300);
+    thresholdFilter->SetLower(200);
     thresholdFilter->SetOutsideValue(0);
     thresholdFilter->Update();
 
@@ -349,7 +366,7 @@ int main(int argc, char **argv) {
     typedef itk::BinaryBallStructuringElement<InputImageType::PixelType, InputImageType::ImageDimension>
             StructuringElementType;
     StructuringElementType structuringElement;
-    structuringElement.SetRadius(6);
+    structuringElement.SetRadius(1);
     structuringElement.CreateStructuringElement();
 
     typedef itk::BinaryMorphologicalOpeningImageFilter <InputImageType, InputImageType, StructuringElementType>
@@ -360,14 +377,6 @@ int main(int argc, char **argv) {
     openingFilter->SetKernel(structuringElement);
     openingFilter->Update();
 
-    //typedef itk::SubtractImageFilter<InputImageType> SubtractType;
-    //SubtractType::Pointer diff = SubtractType::New();
-    //diff->SetInput1(binaryThresholdFilter->GetOutput());
-    //diff->SetInput2(openingFilter->GetOutput());
-
-
-
-
 
 
     /**
@@ -376,31 +385,37 @@ int main(int argc, char **argv) {
      *
      */
 
-    //typedef itk::RGBPixel<unsigned char>         RGBPixelType;
-    //typedef itk::Image<RGBPixelType, Dimension>  RGBImageType;
-/*
-    typedef unsigned char                       PixelType;
-    typedef itk::RGBPixel<unsigned char>         RGBPixelType;
-    typedef itk::Image<PixelType, Dimension>     ImageType;
-    typedef itk::Image<RGBPixelType, Dimension>  RGBImageType;
 
-    typedef itk::Image< unsigned short, Dimension > OutputImageType2;
 
-    typedef itk::ConnectedComponentImageFilter <InputImageType, OutputImageType2 >
+    typedef unsigned int                           LabelPixelType;
+    typedef itk::Image<LabelPixelType, Dimension > LabelImageType;
+
+    typedef itk::ScalarConnectedComponentImageFilter <InputImageType, LabelImageType >
             ConnectedComponentImageFilterType;
+
 
     ConnectedComponentImageFilterType::Pointer connected =
             ConnectedComponentImageFilterType::New ();
-    connected->SetInput(thresholdFilter->GetOutput() );
-    connected->Update();
+    connected->SetInput(openingFilter->GetOutput());
+    connected->SetDistanceThreshold(5);
 
-    std::cout << "Number of objects: " << connected->GetObjectCount() << std::endl;
 
-    typedef itk::LabelToRGBImageFilter<OutputImageType2, RGBImageType> RGBFilterType;
-    RGBFilterType::Pointer rgbFilter = RGBFilterType::New();
-    rgbFilter->SetInput( connected->GetOutput() );
+    typedef itk::RelabelComponentImageFilter <LabelImageType, LabelImageType >
+            RelabelFilterType;
+    RelabelFilterType::Pointer relabel =
+            RelabelFilterType::New();
+    RelabelFilterType::ObjectSizeType minSize = 3;
 
-    */
+    relabel->SetInput(connected->GetOutput());
+    relabel->SetMinimumObjectSize(minSize);
+    relabel->Update();
+    //relabel->GetOb
+
+    std::cout << "Number of labels: "
+    << relabel->GetNumberOfObjects() << endl;
+
+
+
     /**
     *
     * VTK
@@ -415,10 +430,16 @@ int main(int argc, char **argv) {
     //connector->SetInput( reader->GetOutput() );
     rawConnector->Update();
 
+    ConnectorType::Pointer preConnector = ConnectorType::New();
+    preConnector->SetInput( binaryThresholdFilter->GetOutput() );
+    preConnector->Update();
 
 
-    ConnectorType::Pointer binaryThresholdConnector = ConnectorType::New();
-    binaryThresholdConnector->SetInput( openingFilter->GetOutput() );
+
+
+    typedef itk::ImageToVTKImageFilter < LabelImageType > ConnectorType2;
+    ConnectorType2::Pointer binaryThresholdConnector = ConnectorType2::New();
+    binaryThresholdConnector->SetInput( relabel->GetOutput() );
     binaryThresholdConnector->Update();
 
 
@@ -594,7 +615,7 @@ int main(int argc, char **argv) {
     vtkSmartPointer<vtkRenderWindow> renderWindow =
             vtkSmartPointer<vtkRenderWindow>::New();
 
-    renderWindow->SetSize(dimensions[0] * 2, dimensions[1]);
+    renderWindow->SetSize(dimensions[0] * 3, dimensions[1]);
 
 
     vtkSmartPointer<vtkRenderWindowInteractor> renderWindowInteractor =
@@ -606,10 +627,15 @@ int main(int argc, char **argv) {
     vtkSmartPointer<vtkRenderer> rendererRight =
             vtkSmartPointer<vtkRenderer>::New();
 
+    vtkSmartPointer<vtkRenderer> rendererRight2 =
+            vtkSmartPointer<vtkRenderer>::New();
+
     renderWindow->AddRenderer(rendererLeft);
     renderWindow->AddRenderer(rendererRight);
+    renderWindow->AddRenderer(rendererRight2);
     rendererLeft->SetViewport(xmins2[0],ymins2[0],xmaxs2[0],ymaxs2[0]);
     rendererRight->SetViewport(xmins2[1],ymins2[1],xmaxs2[1],ymaxs2[1]);
+    rendererRight2->SetViewport(xmins2[2],ymins2[2],xmaxs2[2],ymaxs2[2]);
 
     interactors.push_back(renderWindowInteractor);
 
@@ -624,20 +650,26 @@ int main(int argc, char **argv) {
     vtkSmartPointer<vtkImageMapper> imageMapperLeft = vtkSmartPointer<vtkImageMapper>::New();
     imageMapperLeft->SetInputData(rawConnector->GetOutput());
 
+    vtkSmartPointer<vtkImageMapper> imageMapperRight2 = vtkSmartPointer<vtkImageMapper>::New();
+    imageMapperRight2->SetInputData(binaryThresholdConnector->GetOutput());
+
     vtkSmartPointer<vtkImageMapper> imageMapperRight = vtkSmartPointer<vtkImageMapper>::New();
-    imageMapperRight->SetInputData(binaryThresholdConnector->GetOutput());
+    imageMapperRight->SetInputData(preConnector->GetOutput());
 
 
     customInteractorStyle->SetMapper1(imageMapperLeft);
     customInteractorStyle->SetMapper2(imageMapperRight);
+    customInteractorStyle->SetMapper3(imageMapperRight2);
     customInteractorStyle->SetRenderer1(rendererLeft);
     customInteractorStyle->SetRenderer2(rendererRight);
+    customInteractorStyle->SetRenderer3(rendererRight2);
     customInteractorStyle->SetRenderWindow(renderWindow);
 
 
     //customInteractorStyle->SetStatusMapper(sliceTextMapper);
 
     rendererRight->GetActiveCamera()->ParallelProjectionOn();
+    rendererRight2->GetActiveCamera()->ParallelProjectionOn();
     rendererLeft->GetActiveCamera()->ParallelProjectionOn();
 
     vtkSmartPointer<vtkActor2D> imageActorLeft = vtkSmartPointer<vtkActor2D>::New();
@@ -649,6 +681,10 @@ int main(int argc, char **argv) {
     imageActorRight ->SetMapper(imageMapperRight);
     rendererRight->AddActor2D(imageActorRight);
 
+    vtkSmartPointer<vtkActor2D> imageActorRight2 = vtkSmartPointer<vtkActor2D>::New();
+    imageActorRight2 ->SetMapper(imageMapperRight2);
+    rendererRight2->AddActor2D(imageActorRight2);
+
     rendererLeft->Render();
     rendererLeft->ResetCamera();
     rendererLeft->Render();
@@ -656,6 +692,11 @@ int main(int argc, char **argv) {
     rendererRight->Render();
     rendererRight->ResetCamera();
     rendererRight->Render();
+
+
+    rendererRight2->Render();
+    rendererRight2->ResetCamera();
+    rendererRight2->Render();
 
 
 
