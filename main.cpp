@@ -1,4 +1,5 @@
 #include "itkScalarConnectedComponentImageFilter.h"
+#include "itkBinaryMorphologicalClosingImageFilter.h"
 #include "itkRelabelComponentImageFilter.h"
 #include "itkImage.h"
 #include "itkImageFileReader.h"
@@ -340,9 +341,6 @@ int main(int argc, char **argv) {
             = BinaryThresholdImageFilterType::New();
     binaryThresholdFilter->SetInput(filter->GetOutput());
     binaryThresholdFilter->SetLowerThreshold(200);
-    //thresholdFilter->SetUpperThreshold(upperThreshold);
-    //thresholdFilter->SetInsideValue(255);
-    //thresholdFilter->SetOutsideValue(0);
     binaryThresholdFilter->Update();
 
 
@@ -366,16 +364,16 @@ int main(int argc, char **argv) {
     typedef itk::BinaryBallStructuringElement<InputImageType::PixelType, InputImageType::ImageDimension>
             StructuringElementType;
     StructuringElementType structuringElement;
-    structuringElement.SetRadius(1);
+    structuringElement.SetRadius(8);
     structuringElement.CreateStructuringElement();
 
-    typedef itk::BinaryMorphologicalOpeningImageFilter <InputImageType, InputImageType, StructuringElementType>
-            BinaryMorphologicalOpeningImageFilterType;
-    BinaryMorphologicalOpeningImageFilterType::Pointer openingFilter
-            = BinaryMorphologicalOpeningImageFilterType::New();
-    openingFilter->SetInput(binaryThresholdFilter->GetOutput());
-    openingFilter->SetKernel(structuringElement);
-    openingFilter->Update();
+    typedef itk::BinaryMorphologicalClosingImageFilter <InputImageType, InputImageType, StructuringElementType>
+            BinaryMorphologicalClosingImageFilterType;
+    BinaryMorphologicalClosingImageFilterType::Pointer closingFilter
+            = BinaryMorphologicalClosingImageFilterType::New();
+    closingFilter->SetInput(binaryThresholdFilter->GetOutput());
+    closingFilter->SetKernel(structuringElement);
+    closingFilter->Update();
 
 
 
@@ -396,7 +394,7 @@ int main(int argc, char **argv) {
 
     ConnectedComponentImageFilterType::Pointer connected =
             ConnectedComponentImageFilterType::New ();
-    connected->SetInput(openingFilter->GetOutput());
+    connected->SetInput(closingFilter->GetOutput());
     connected->SetDistanceThreshold(5);
 
 
@@ -404,12 +402,11 @@ int main(int argc, char **argv) {
             RelabelFilterType;
     RelabelFilterType::Pointer relabel =
             RelabelFilterType::New();
-    RelabelFilterType::ObjectSizeType minSize = 3;
+    RelabelFilterType::ObjectSizeType minSize = 10;
 
     relabel->SetInput(connected->GetOutput());
     relabel->SetMinimumObjectSize(minSize);
     relabel->Update();
-    //relabel->GetOb
 
     std::cout << "Number of labels: "
     << relabel->GetNumberOfObjects() << endl;
@@ -433,6 +430,10 @@ int main(int argc, char **argv) {
     ConnectorType::Pointer preConnector = ConnectorType::New();
     preConnector->SetInput( binaryThresholdFilter->GetOutput() );
     preConnector->Update();
+
+    ConnectorType::Pointer closingConnector = ConnectorType::New();
+    closingConnector->SetInput( closingFilter->GetOutput() );
+    closingConnector->Update();
 
 
 
@@ -496,7 +497,7 @@ int main(int argc, char **argv) {
 
     vtkSmartPointer<vtkFixedPointVolumeRayCastMapper> volumeMapperBinary =
             vtkSmartPointer<vtkFixedPointVolumeRayCastMapper>::New();
-    volumeMapperBinary->SetInputData(binaryThresholdConnector->GetOutput());
+    volumeMapperBinary->SetInputData(closingConnector->GetOutput());
 
 
     vtkSmartPointer<vtkColorTransferFunction>volumeColor =
@@ -651,8 +652,8 @@ int main(int argc, char **argv) {
     imageMapperLeft->SetInputData(rawConnector->GetOutput());
 
     vtkSmartPointer<vtkImageMapper> imageMapperRight2 = vtkSmartPointer<vtkImageMapper>::New();
-    imageMapperRight2->SetInputData(binaryThresholdConnector->GetOutput());
-
+    //imageMapperRight2->SetInputData(binaryThresholdConnector->GetOutput());
+    imageMapperRight2->SetInputData(closingConnector->GetOutput());
     vtkSmartPointer<vtkImageMapper> imageMapperRight = vtkSmartPointer<vtkImageMapper>::New();
     imageMapperRight->SetInputData(preConnector->GetOutput());
 
