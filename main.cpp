@@ -535,7 +535,7 @@ int main(int argc, char **argv) {
     imageActorPost ->SetMapper(imageMapperPost);
     rendererPost->AddActor2D(imageActorPost);
 
-
+    imageViewer->GetRenderWindow()->SetSize(800, 400);
 
     // slice status message
     vtkSmartPointer<vtkTextProperty> sliceTextProp = vtkSmartPointer<vtkTextProperty>::New();
@@ -601,12 +601,14 @@ int main(int argc, char **argv) {
     imageViewer->GetRenderer()->SetViewport(xmins2[0],ymins2[0],xmaxs2[0],ymaxs2[0]);
     imageViewer->GetRenderWindow()->AddRenderer(rendererPost);
     rendererPost->SetViewport(xmins2[1],ymins2[1],xmaxs2[1],ymaxs2[1]);
-    //rendererPost->SetBackground(0.5,0.5,0.5);
+    rendererPost->SetBackground(0.5,0.5,0.5);
+    rendererPost->GetActiveCamera()->ParallelProjectionOn();
+    rendererPost->GetActiveCamera()->SetParallelScale(4);
 
 
     // initialize rendering and interaction
     //imageViewer->GetRenderWindow()->SetSize(400, 300);
-    //imageViewer->GetRenderer()->SetBackground(0.2, 0.3, 0.4);
+    imageViewer->GetRenderer()->SetBackground(0.2, 0.3, 0.4);
     imageViewer->Render();
     imageViewer->GetRenderer()->ResetCamera();
     imageViewer->Render();
