@@ -35,8 +35,11 @@
 #include <vtkObjectFactory.h>
 #include <vtkInteractorStyleImage.h>
 #include <vtkActor2D.h>
+#include "itkBinaryMorphologicalOpeningImageFilter.h"
 #include <vtkTextProperty.h>
 #include <vtkTextMapper.h>
+#include "itkBinaryBallStructuringElement.h"
+#include "itkSubtractImageFilter.h"
 
 //For Edge Preserving Smoothing
 
@@ -307,7 +310,7 @@ int main(int argc, char **argv) {
 
     /**
     *
-    * SEGMENTATION
+    * THRESHOLDING
     *
     */
 
@@ -318,11 +321,12 @@ int main(int argc, char **argv) {
 
     BinaryThresholdImageFilterType::Pointer binaryThresholdFilter
             = BinaryThresholdImageFilterType::New();
-    binaryThresholdFilter->SetInput(reader->GetOutput());
-    binaryThresholdFilter->SetLowerThreshold(400);
+    binaryThresholdFilter->SetInput(filter->GetOutput());
+    binaryThresholdFilter->SetLowerThreshold(300);
     //thresholdFilter->SetUpperThreshold(upperThreshold);
     //thresholdFilter->SetInsideValue(255);
     //thresholdFilter->SetOutsideValue(0);
+    binaryThresholdFilter->Update();
 
 
     typedef itk::ThresholdImageFilter <InputImageType>
@@ -332,8 +336,35 @@ int main(int argc, char **argv) {
             = ThresholdImageFilterType::New();
     thresholdFilter->SetInput(filter->GetOutput());
     //thresholdFilter->ThresholdOutside(lowerThreshold, upperThreshold);
-    thresholdFilter->SetLower(400);
+    thresholdFilter->SetLower(300);
     thresholdFilter->SetOutsideValue(0);
+    thresholdFilter->Update();
+
+    /**
+    *
+    * Morphological Operations
+    *
+    */
+
+    typedef itk::BinaryBallStructuringElement<InputImageType::PixelType, InputImageType::ImageDimension>
+            StructuringElementType;
+    StructuringElementType structuringElement;
+    structuringElement.SetRadius(6);
+    structuringElement.CreateStructuringElement();
+
+    typedef itk::BinaryMorphologicalOpeningImageFilter <InputImageType, InputImageType, StructuringElementType>
+            BinaryMorphologicalOpeningImageFilterType;
+    BinaryMorphologicalOpeningImageFilterType::Pointer openingFilter
+            = BinaryMorphologicalOpeningImageFilterType::New();
+    openingFilter->SetInput(binaryThresholdFilter->GetOutput());
+    openingFilter->SetKernel(structuringElement);
+    openingFilter->Update();
+
+    //typedef itk::SubtractImageFilter<InputImageType> SubtractType;
+    //SubtractType::Pointer diff = SubtractType::New();
+    //diff->SetInput1(binaryThresholdFilter->GetOutput());
+    //diff->SetInput2(openingFilter->GetOutput());
+
 
 
 
@@ -369,7 +400,7 @@ int main(int argc, char **argv) {
     RGBFilterType::Pointer rgbFilter = RGBFilterType::New();
     rgbFilter->SetInput( connected->GetOutput() );
 
-*/
+    */
     /**
     *
     * VTK
@@ -387,7 +418,7 @@ int main(int argc, char **argv) {
 
 
     ConnectorType::Pointer binaryThresholdConnector = ConnectorType::New();
-    binaryThresholdConnector->SetInput( binaryThresholdFilter->GetOutput() );
+    binaryThresholdConnector->SetInput( openingFilter->GetOutput() );
     binaryThresholdConnector->Update();
 
 
@@ -594,7 +625,7 @@ int main(int argc, char **argv) {
     imageMapperLeft->SetInputData(rawConnector->GetOutput());
 
     vtkSmartPointer<vtkImageMapper> imageMapperRight = vtkSmartPointer<vtkImageMapper>::New();
-    imageMapperRight->SetInputData(connector->GetOutput());
+    imageMapperRight->SetInputData(binaryThresholdConnector->GetOutput());
 
 
     customInteractorStyle->SetMapper1(imageMapperLeft);
