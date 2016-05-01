@@ -90,28 +90,54 @@ public:
     vtkTypeMacro(CustomInteractor, vtkInteractorStyleImage);
 
 protected:
-    vtkImageViewer2* _ImageViewer;
+    //vtkImageViewer2* _ImageViewer;
     vtkTextMapper* _StatusMapper;
-    vtkImageMapper* _ImageMapper;
+    vtkImageMapper* _ImageMapperLeft;
+    vtkImageMapper* _ImageMapperRight;
+    vtkRenderer* _ImageRendererLeft;
+    vtkRenderer* _ImageRendererRight;
+    vtkRenderWindow* _RenderWindow;
+
     int _Slice;
     int _MinSlice;
     int _MaxSlice;
 
 public:
     void SetImageViewer(vtkImageViewer2* imageViewer) {
-        _ImageViewer = imageViewer;
-        _MinSlice = imageViewer->GetSliceMin();
-        _MaxSlice = imageViewer->GetSliceMax();
+        //_ImageViewer = imageViewer;
+        //_MinSlice = imageViewer->GetSliceMin();
+        //_MaxSlice = imageViewer->GetSliceMax();
         _Slice = _MinSlice;
         //cout << "Slicer: Min = " << _MinSlice << ", Max = " << _MaxSlice << std::endl;
     }
 
     void SetStatusMapper(vtkTextMapper* statusMapper) {
         _StatusMapper = statusMapper;
+
     }
 
-    void SetPostImageViewer(vtkImageMapper* imageMapper){
-        _ImageMapper = imageMapper;
+
+    void SetMapper1(vtkImageMapper* imageMapper){
+        _ImageMapperLeft = imageMapper;
+        _MinSlice = imageMapper->GetWholeZMin();
+        _MaxSlice = imageMapper->GetWholeZMax();
+        _Slice = _MinSlice;
+    }
+
+    void SetMapper2(vtkImageMapper* imageMapper){
+        _ImageMapperRight = imageMapper;
+    }
+
+    void SetRenderer1(vtkRenderer* imageRenderer){
+        _ImageRendererLeft = imageRenderer;
+    }
+
+    void SetRenderer2(vtkRenderer* imageRenderer){
+        _ImageRendererRight = imageRenderer;
+    }
+
+    void SetRenderWindow(vtkRenderWindow* window){
+        _RenderWindow = window;
     }
 
 
@@ -120,11 +146,17 @@ protected:
         if(_Slice < _MaxSlice) {
             _Slice += 1;
             cout << "MoveSliceForward::Slice = " << _Slice << std::endl;
-            _ImageViewer->SetSlice(_Slice);
-            _ImageMapper->SetZSlice(_Slice);
+            //_ImageViewer->SetSlice(_Slice);
+            _ImageMapperRight->SetZSlice(_Slice);
+            _ImageMapperLeft->SetZSlice(_Slice);
+            _ImageRendererLeft->Render();
+            _ImageRendererRight->Render();
+            _RenderWindow->Render();
             std::string msg = StatusMessage::Format(_Slice, _MaxSlice);
-            _StatusMapper->SetInput(msg.c_str());
-            _ImageViewer->Render();
+            //_StatusMapper->SetInput(msg.c_str());
+            //_ImageViewer->Render();
+            //_ImageMapperLeft->Render();
+            //_ImageMapperRight->Render();
 
         }
     }
@@ -133,11 +165,13 @@ protected:
         if(_Slice > _MinSlice) {
             _Slice -= 1;
             cout << "MoveSliceBackward::Slice = " << _Slice << std::endl;
-            _ImageViewer->SetSlice(_Slice);
-            _ImageMapper->SetZSlice(_Slice);
-            std::string msg = StatusMessage::Format(_Slice, _MaxSlice);
-            _StatusMapper->SetInput(msg.c_str());
-            _ImageViewer->Render();
+            //_ImageViewer->SetSlice(_Slice);
+            _ImageMapperLeft->SetZSlice(_Slice);
+            _ImageMapperRight->SetZSlice(_Slice);
+            _RenderWindow->Render();
+            //std::string msg = StatusMessage::Format(_Slice, _MaxSlice);
+            //_StatusMapper->SetInput(msg.c_str());
+            //_ImageViewer->Render();
         }
     }
 
@@ -285,7 +319,7 @@ int main(int argc, char **argv) {
     BinaryThresholdImageFilterType::Pointer binaryThresholdFilter
             = BinaryThresholdImageFilterType::New();
     binaryThresholdFilter->SetInput(reader->GetOutput());
-    binaryThresholdFilter->SetLowerThreshold(500);
+    binaryThresholdFilter->SetLowerThreshold(400);
     //thresholdFilter->SetUpperThreshold(upperThreshold);
     //thresholdFilter->SetInsideValue(255);
     //thresholdFilter->SetOutsideValue(0);
@@ -521,102 +555,76 @@ int main(int argc, char **argv) {
     originalSliceConnector->SetInput( reader->GetOutput() );
     originalSliceConnector->Update();
 
-
-    // Visualize
-    vtkSmartPointer<vtkImageViewer2> imageViewer =
-            vtkSmartPointer<vtkImageViewer2>::New();
-    imageViewer->SetInputData(originalSliceConnector->GetOutput());
-
-    vtkSmartPointer<vtkRenderer> rendererPost = vtkSmartPointer<vtkRenderer>::New();
-    vtkSmartPointer<vtkImageMapper> imageMapperPost = vtkSmartPointer<vtkImageMapper>::New();
-    imageMapperPost->SetInputData(connector->GetOutput());
-
-    vtkSmartPointer<vtkActor2D> imageActorPost = vtkSmartPointer<vtkActor2D>::New();
-    imageActorPost ->SetMapper(imageMapperPost);
-    rendererPost->AddActor2D(imageActorPost);
-
-    imageViewer->GetRenderWindow()->SetSize(800, 400);
-
-    // slice status message
-    vtkSmartPointer<vtkTextProperty> sliceTextProp = vtkSmartPointer<vtkTextProperty>::New();
-    sliceTextProp->SetFontFamilyToCourier();
-    sliceTextProp->SetFontSize(20);
-    sliceTextProp->SetVerticalJustificationToBottom();
-    sliceTextProp->SetJustificationToLeft();
-
-    vtkSmartPointer<vtkTextMapper> sliceTextMapper = vtkSmartPointer<vtkTextMapper>::New();
-    std::string msg = StatusMessage::Format(imageViewer->GetSliceMin(), imageViewer->GetSliceMax());
-    sliceTextMapper->SetInput(msg.c_str());
-    sliceTextMapper->SetTextProperty(sliceTextProp);
+    int *dimensions = connector->GetOutput()->GetDimensions();
 
 
 
 
-    vtkSmartPointer<vtkActor2D> sliceTextActor = vtkSmartPointer<vtkActor2D>::New();
-    sliceTextActor->SetMapper(sliceTextMapper);
-    sliceTextActor->SetPosition(15, 10);
+    vtkSmartPointer<vtkRenderWindow> renderWindow =
+            vtkSmartPointer<vtkRenderWindow>::New();
 
-    // usage hint message
-    vtkSmartPointer<vtkTextProperty> usageTextProp = vtkSmartPointer<vtkTextProperty>::New();
-    usageTextProp->SetFontFamilyToCourier();
-    usageTextProp->SetFontSize(14);
-    usageTextProp->SetVerticalJustificationToTop();
-    usageTextProp->SetJustificationToLeft();
+    renderWindow->SetSize(dimensions[0] * 2, dimensions[1]);
 
-    vtkSmartPointer<vtkTextMapper> usageTextMapper = vtkSmartPointer<vtkTextMapper>::New();
-    usageTextMapper->SetInput("- Slice with mouse wheel\n  or Up/Down-Key\n- Zoom with pressed right\n  mouse button while dragging");
-    usageTextMapper->SetTextProperty(usageTextProp);
 
-    vtkSmartPointer<vtkActor2D> usageTextActor = vtkSmartPointer<vtkActor2D>::New();
-    usageTextActor->SetMapper(usageTextMapper);
-    usageTextActor->GetPositionCoordinate()->SetCoordinateSystemToNormalizedDisplay();
-    usageTextActor->GetPositionCoordinate()->SetValue( 0.05, 0.95);
-
-    // create an interactor with our own style (inherit from vtkInteractorStyleImage)
-    // in order to catch mousewheel and key events
     vtkSmartPointer<vtkRenderWindowInteractor> renderWindowInteractor =
             vtkSmartPointer<vtkRenderWindowInteractor>::New();
 
+    vtkSmartPointer<vtkRenderer> rendererLeft =
+            vtkSmartPointer<vtkRenderer>::New();
+
+    vtkSmartPointer<vtkRenderer> rendererRight =
+            vtkSmartPointer<vtkRenderer>::New();
+
+    renderWindow->AddRenderer(rendererLeft);
+    renderWindow->AddRenderer(rendererRight);
+    rendererLeft->SetViewport(xmins2[0],ymins2[0],xmaxs2[0],ymaxs2[0]);
+    rendererRight->SetViewport(xmins2[1],ymins2[1],xmaxs2[1],ymaxs2[1]);
 
     interactors.push_back(renderWindowInteractor);
 
-    vtkSmartPointer<CustomInteractor> myInteractorStyle =
+    vtkSmartPointer<CustomInteractor> customInteractorStyle =
             vtkSmartPointer<CustomInteractor>::New();
 
-    // make imageviewer2 and sliceTextMapper visible to our interactorstyle
-    // to enable slice status message updates when scrolling through the slices
-    myInteractorStyle->SetImageViewer(imageViewer);
-    myInteractorStyle->SetPostImageViewer(imageMapperPost);
-    myInteractorStyle->SetStatusMapper(sliceTextMapper);
 
-    imageViewer->SetupInteractor(renderWindowInteractor);
-    //imageViewerPost->SetupInteractor(renderWindowInteractor);
-    // make the interactor use our own interactorstyle
-    // cause SetupInteractor() is defining it's own default interatorstyle
-    // this must be called after SetupInteractor()
-    renderWindowInteractor->SetInteractorStyle(myInteractorStyle);
-    // add slice status message and usage hint message to the renderer
-    imageViewer->GetRenderer()->AddActor2D(sliceTextActor);
-    //imageViewer->GetRenderer()->AddActor2D(usageTextActor);
-    imageViewer->GetRenderer()->SetViewport(xmins2[0],ymins2[0],xmaxs2[0],ymaxs2[0]);
-    imageViewer->GetRenderWindow()->AddRenderer(rendererPost);
-    rendererPost->SetViewport(xmins2[1],ymins2[1],xmaxs2[1],ymaxs2[1]);
-    rendererPost->SetBackground(0.5,0.5,0.5);
-    rendererPost->GetActiveCamera()->ParallelProjectionOn();
-    rendererPost->GetActiveCamera()->SetParallelScale(4);
+    renderWindowInteractor->SetRenderWindow(renderWindow);
+    renderWindow->Render();
+    renderWindowInteractor->SetInteractorStyle(customInteractorStyle );
+
+    vtkSmartPointer<vtkImageMapper> imageMapperLeft = vtkSmartPointer<vtkImageMapper>::New();
+    imageMapperLeft->SetInputData(rawConnector->GetOutput());
+
+    vtkSmartPointer<vtkImageMapper> imageMapperRight = vtkSmartPointer<vtkImageMapper>::New();
+    imageMapperRight->SetInputData(connector->GetOutput());
 
 
-    // initialize rendering and interaction
-    //imageViewer->GetRenderWindow()->SetSize(400, 300);
-    imageViewer->GetRenderer()->SetBackground(0.2, 0.3, 0.4);
-    imageViewer->Render();
-    imageViewer->GetRenderer()->ResetCamera();
-    imageViewer->Render();
+    customInteractorStyle->SetMapper1(imageMapperLeft);
+    customInteractorStyle->SetMapper2(imageMapperRight);
+    customInteractorStyle->SetRenderer1(rendererLeft);
+    customInteractorStyle->SetRenderer2(rendererRight);
+    customInteractorStyle->SetRenderWindow(renderWindow);
 
-    rendererPost->Render();
-    rendererPost->ResetCamera();
-    rendererPost->Render();
-    //renderWindowInteractor->Start();
+
+    //customInteractorStyle->SetStatusMapper(sliceTextMapper);
+
+    rendererRight->GetActiveCamera()->ParallelProjectionOn();
+    rendererLeft->GetActiveCamera()->ParallelProjectionOn();
+
+    vtkSmartPointer<vtkActor2D> imageActorLeft = vtkSmartPointer<vtkActor2D>::New();
+    imageActorLeft ->SetMapper(imageMapperLeft);
+    rendererLeft->AddActor2D(imageActorLeft);
+    rendererLeft->SetBackground(1,1,1);
+
+    vtkSmartPointer<vtkActor2D> imageActorRight = vtkSmartPointer<vtkActor2D>::New();
+    imageActorRight ->SetMapper(imageMapperRight);
+    rendererRight->AddActor2D(imageActorRight);
+
+    rendererLeft->Render();
+    rendererLeft->ResetCamera();
+    rendererLeft->Render();
+
+    rendererRight->Render();
+    rendererRight->ResetCamera();
+    rendererRight->Render();
 
 
 
