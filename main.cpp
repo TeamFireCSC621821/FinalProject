@@ -37,6 +37,14 @@
 #include <vtkActor2D.h>
 #include <vtkTextProperty.h>
 #include <vtkTextMapper.h>
+#include "itkCheckerBoardImageFilter.h"
+#include "itkImageIterator.h"
+
+//Registration Imports
+#include "itkDemonsRegistrationFilter.h"
+#include "itkHistogramMatchingImageFilter.h"
+#include "itkCastImageFilter.h"
+#include "itkWarpImageFilter.h"
 
 //For Edge Preserving Smoothing
 
@@ -72,6 +80,21 @@ typedef float  OutputPixelType;
 typedef itk::Image< InputPixelType, Dimension > InputImageType;
 typedef itk::Image< OutputPixelType, Dimension > OutputImageType;
 typedef itk::ImageToVTKImageFilter < InputImageType > ConnectorType;
+
+//registration
+//const unsigned int Dimension = 3;
+typedef unsigned short PixelType;
+typedef itk::Image< PixelType, Dimension > FixedImageType;
+typedef itk::Image< PixelType, Dimension > MovingImageType;
+
+typedef itk::ImageSeriesReader< FixedImageType >        FixedImageReaderType;
+typedef itk::ImageSeriesReader< MovingImageType >        MovingImageReaderType;
+
+typedef itk::GradientAnisotropicDiffusionImageFilter<FixedImageType,FixedImageType > SmoothingFilterType;
+
+//checkerboard typedefs
+typedef itk::CheckerBoardImageFilter< FixedImageType > CheckerBoardFilterType;
+
 
 // helper class to format slice status message
 class StatusMessage {
@@ -215,58 +238,59 @@ protected:
 
 
 vtkStandardNewMacro( CustomInteractor);
-
+SmoothingFilterType::Pointer Smoothing(FixedImageReaderType::Pointer);
+//SmoothingFilterType::Pointer Smoothing(MovingImageReaderType::Pointer);
 
 int main(int argc, char **argv) {
     std::vector<vtkSmartPointer<vtkRenderWindowInteractor> > interactors;
 
 
+
+    //This is for fixedImage loading
     //typedef itk::Image< InputPixelType, Dimension > ImageType;
-    typedef itk::ImageSeriesReader< InputImageType >        ReaderType;
+
     typedef itk::GDCMImageIO       ImageIOType;
-    ImageIOType::Pointer dicomIO = ImageIOType::New();
+    ImageIOType::Pointer fixedDicomIO = ImageIOType::New();
+    ImageIOType::Pointer movingDicomIO = ImageIOType::New();
 
-    ReaderType::Pointer reader = ReaderType::New();
+    FixedImageReaderType::Pointer fixedImageReader = FixedImageReaderType::New();
+    MovingImageReaderType::Pointer movingImageReader = MovingImageReaderType::New();
 
-    reader->SetImageIO( dicomIO );
+    fixedImageReader->SetImageIO(fixedDicomIO);
+    movingImageReader->SetImageIO(movingDicomIO);
+    //reader->SetImageIO( dicomIO );
     typedef itk::GDCMSeriesFileNames NamesGeneratorType;
-    NamesGeneratorType::Pointer nameGenerator = NamesGeneratorType::New();
+    NamesGeneratorType::Pointer fixedNameGenerator = NamesGeneratorType::New();
+    NamesGeneratorType::Pointer movingNameGenerator = NamesGeneratorType::New();
 
     //nameGenerator->SetUseSeriesDetails( true );
     //nameGenerator->AddSeriesRestriction("0008|0021" );
-    nameGenerator->SetDirectory( "/Users/mac/DICOMSLIDES");
-
-/*
-    typedef float InputPixelType;
-    typedef float OutputPixelType;
-    typedef itk::Image< InputPixelType, Dimension > InputImageType;
-    typedef itk::Image< OutputPixelType, Dimension > OutputImageType;
-*/
-
+    fixedNameGenerator->SetDirectory( "/Users/ivanG/desktop/dcomSlides/DCOM_2");
+    movingNameGenerator->SetDirectory( "/Users/ivanG/desktop/dcomSlides/DCOM_4");
 
 
     typedef std::vector< std::string >    SeriesIdContainer;
-    const SeriesIdContainer & seriesUID = nameGenerator->GetSeriesUIDs();
-    std::cout << seriesUID.size() << std::endl;
-    SeriesIdContainer::const_iterator seriesItr = seriesUID.begin();
-    SeriesIdContainer::const_iterator seriesEnd = seriesUID.end();
-    while( seriesItr != seriesEnd )
+    const SeriesIdContainer & fixedSeriesUID = fixedNameGenerator->GetSeriesUIDs();
+    std::cout << fixedSeriesUID.size() << std::endl;
+    SeriesIdContainer::const_iterator fixedSeriesItr = fixedSeriesUID.begin();
+    SeriesIdContainer::const_iterator fixedSeriesEnd = fixedSeriesUID.end();
+    while( fixedSeriesItr != fixedSeriesEnd )
     {
-        std::cout << seriesItr->c_str() << std::endl;
-        seriesItr++;
+        std::cout << fixedSeriesItr->c_str() << std::endl;
+        fixedSeriesItr++;
     }
-    std::string seriesIdentifier;
-    seriesIdentifier = seriesUID.begin()->c_str();
-    std::cout << seriesIdentifier.c_str() << std::endl;
+    std::string fixedSeriesIdentifier;
+    fixedSeriesIdentifier = fixedSeriesUID.begin()->c_str();
+    std::cout << fixedSeriesIdentifier.c_str() << std::endl;
 
     typedef std::vector< std::string >   FileNamesContainer;
-    FileNamesContainer fileNames;
-    fileNames = nameGenerator->GetFileNames( seriesIdentifier );
+    FileNamesContainer fixedFileNames;
+    fixedFileNames = fixedNameGenerator->GetFileNames( fixedSeriesIdentifier );
 
-    reader->SetFileNames( fileNames );
+    fixedImageReader->SetFileNames( fixedFileNames );
     try
     {
-        reader->Update();
+        fixedImageReader->Update();
     }
     catch (itk::ExceptionObject &ex)
     {
@@ -276,26 +300,77 @@ int main(int argc, char **argv) {
 
 
 
+    //moving
+    //typedef std::vector< std::string >    SeriesIdContainer;
+    const SeriesIdContainer & movingSeriesUID = movingNameGenerator->GetSeriesUIDs();
+    std::cout << movingSeriesUID.size() << std::endl;
+    SeriesIdContainer::const_iterator movingSeriesItr = movingSeriesUID.begin();
+    SeriesIdContainer::const_iterator movingSeriesEnd = movingSeriesUID.end();
+    while( movingSeriesItr != movingSeriesEnd )
+    {
+        std::cout << movingSeriesItr->c_str() << std::endl;
+        movingSeriesItr++;
+    }
+    std::string movingSeriesIdentifier;
+    movingSeriesIdentifier = movingSeriesUID.begin()->c_str();
+    std::cout << movingSeriesIdentifier.c_str() << std::endl;
 
+    FileNamesContainer movingFileNames;
+    movingFileNames = movingNameGenerator->GetFileNames( movingSeriesIdentifier );
 
-    /**
-     *
-     * Smoothing Filter
-     *
-     */
-
-    typedef itk::GradientAnisotropicDiffusionImageFilter<InputImageType,InputImageType > FilterType;
-    FilterType::Pointer filter = FilterType::New();
-
-    filter->SetInput( reader->GetOutput() );
-    filter->SetNumberOfIterations( 1 );
-    filter->SetTimeStep( 0.01 );
-    filter->SetConductanceParameter( 3.0 );
-
-
-
+    movingImageReader->SetFileNames( movingFileNames );
     try
     {
+        movingImageReader->Update();
+    }
+    catch (itk::ExceptionObject &ex)
+    {
+        std::cout << ex << std::endl;
+    }
+
+    SmoothingFilterType::Pointer fixedFilter = Smoothing(fixedImageReader);
+    SmoothingFilterType::Pointer movingFilter = Smoothing(movingImageReader);
+
+    /*
+     * Thirion's Demon Registration
+     *
+     */
+    int histogramLevel = 1024;
+    int histogramMatchPoints = 7;
+    int numberOfIterations = 1;
+    float standardDeviations = 1.0;
+    typedef float InternalPixelType;
+    typedef itk::Image< InternalPixelType, Dimension > InternalImageType;
+    typedef itk::CastImageFilter< FixedImageType, InternalImageType > FixedImageCasterType;
+    typedef itk::CastImageFilter< MovingImageType, InternalImageType > MovingImageCasterType;
+
+    FixedImageCasterType::Pointer fixedImageCaster = FixedImageCasterType::New();
+    MovingImageCasterType::Pointer movingImageCaster = MovingImageCasterType::New();
+
+    fixedImageCaster->SetInput( fixedFilter->GetOutput() );
+    movingImageCaster->SetInput( movingFilter->GetOutput() );
+
+    typedef itk::HistogramMatchingImageFilter< InternalImageType, InternalImageType> MatchingFilterType;
+    MatchingFilterType::Pointer matcher = MatchingFilterType::New();
+
+    matcher->SetInput(movingImageCaster->GetOutput());
+    matcher->SetReferenceImage(fixedImageCaster->GetOutput());
+    matcher->SetNumberOfHistogramLevels(histogramLevel);
+    matcher->SetNumberOfMatchPoints(histogramMatchPoints);
+
+    matcher->ThresholdAtMeanIntensityOn();
+
+    typedef itk::Vector< float, Dimension > VectorPixelType;
+    typedef itk::Image< VectorPixelType, Dimension > DisplacementFieldType;
+    typedef itk::DemonsRegistrationFilter <InternalImageType, InternalImageType, DisplacementFieldType> RegistrationFilterType;
+    RegistrationFilterType::Pointer filter = RegistrationFilterType::New();
+    filter->SetFixedImage ( fixedImageCaster->GetOutput() );
+    filter->SetMovingImage ( matcher->GetOutput() );
+
+    filter->SetNumberOfIterations(numberOfIterations);
+    filter->SetStandardDeviations(standardDeviations);
+
+    try{
         filter->Update();
     }
     catch( itk::ExceptionObject & error )
@@ -304,72 +379,31 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
+    typedef itk::WarpImageFilter< MovingImageType, MovingImageType, DisplacementFieldType > WarperType;
+    typedef itk::LinearInterpolateImageFunction< MovingImageType, double > InterpolatorType;
+    WarperType::Pointer warper = WarperType::New();
+    InterpolatorType::Pointer interpolator = InterpolatorType::New();
+    FixedImageType::Pointer fixedImage = fixedFilter->GetOutput();
+    warper->SetInput( movingFilter->GetOutput());
+    warper->SetInterpolator(interpolator);
+    warper->SetOutputSpacing(fixedImage->GetSpacing());
+    warper->SetOutputOrigin(fixedImage->GetOrigin());
+    warper->SetOutputDirection( fixedImage->GetDirection());
 
-    /**
-    *
-    * SEGMENTATION
-    *
-    */
-
-
-
-    typedef itk::BinaryThresholdImageFilter <InputImageType, InputImageType>
-            BinaryThresholdImageFilterType;
-
-    BinaryThresholdImageFilterType::Pointer binaryThresholdFilter
-            = BinaryThresholdImageFilterType::New();
-    binaryThresholdFilter->SetInput(reader->GetOutput());
-    binaryThresholdFilter->SetLowerThreshold(400);
-    //thresholdFilter->SetUpperThreshold(upperThreshold);
-    //thresholdFilter->SetInsideValue(255);
-    //thresholdFilter->SetOutsideValue(0);
-
-
-    typedef itk::ThresholdImageFilter <InputImageType>
-            ThresholdImageFilterType;
-
-    ThresholdImageFilterType::Pointer thresholdFilter
-            = ThresholdImageFilterType::New();
-    thresholdFilter->SetInput(filter->GetOutput());
-    //thresholdFilter->ThresholdOutside(lowerThreshold, upperThreshold);
-    thresholdFilter->SetLower(400);
-    thresholdFilter->SetOutsideValue(0);
+    warper->SetDisplacementField(filter->GetOutput());
 
 
 
-
-
-    /**
-     *
-     * Connected Components
+    /*
+     * CheckBoard
      *
      */
 
-    //typedef itk::RGBPixel<unsigned char>         RGBPixelType;
-    //typedef itk::Image<RGBPixelType, Dimension>  RGBImageType;
-/*
-    typedef unsigned char                       PixelType;
-    typedef itk::RGBPixel<unsigned char>         RGBPixelType;
-    typedef itk::Image<PixelType, Dimension>     ImageType;
-    typedef itk::Image<RGBPixelType, Dimension>  RGBImageType;
+    CheckerBoardFilterType::Pointer checkerBoardFilter = CheckerBoardFilterType::New();
+    checkerBoardFilter->SetInput1(fixedFilter->GetOutput());
+    checkerBoardFilter->SetInput2(warper->GetOutput());
+    checkerBoardFilter->Update();
 
-    typedef itk::Image< unsigned short, Dimension > OutputImageType2;
-
-    typedef itk::ConnectedComponentImageFilter <InputImageType, OutputImageType2 >
-            ConnectedComponentImageFilterType;
-
-    ConnectedComponentImageFilterType::Pointer connected =
-            ConnectedComponentImageFilterType::New ();
-    connected->SetInput(thresholdFilter->GetOutput() );
-    connected->Update();
-
-    std::cout << "Number of objects: " << connected->GetObjectCount() << std::endl;
-
-    typedef itk::LabelToRGBImageFilter<OutputImageType2, RGBImageType> RGBFilterType;
-    RGBFilterType::Pointer rgbFilter = RGBFilterType::New();
-    rgbFilter->SetInput( connected->GetOutput() );
-
-*/
     /**
     *
     * VTK
@@ -377,26 +411,27 @@ int main(int argc, char **argv) {
     */
 
     //typedef itk::ImageToVTKImageFilter < RGBImageType > ConnectorType;
-    ConnectorType::Pointer rawConnector = ConnectorType::New();
+    typedef itk::ImageToVTKImageFilter < MovingImageType > warpConnectorType;
+    warpConnectorType::Pointer rawConnector = warpConnectorType::New();
     //connector->SetInput( rgbFilter->GetOutput() );
-    rawConnector->SetInput( reader->GetOutput() );
+    rawConnector->SetInput( fixedFilter->GetOutput() );
     //connector->SetInput( filter->GetOutput() );
     //connector->SetInput( reader->GetOutput() );
     rawConnector->Update();
 
 
 
-    ConnectorType::Pointer binaryThresholdConnector = ConnectorType::New();
-    binaryThresholdConnector->SetInput( binaryThresholdFilter->GetOutput() );
-    binaryThresholdConnector->Update();
+    warpConnectorType::Pointer movingImageConnector = warpConnectorType::New();
+    movingImageConnector->SetInput( movingFilter->GetOutput() );
+    movingImageConnector->Update();
 
 
 
 
-    //typedef itk::ImageToVTKImageFilter < RGBImageType > ConnectorType;
-    ConnectorType::Pointer connector = ConnectorType::New();
+    //typedef itk::ImageToVTKImageFilter < MovingImageType > warpConnectorType;
+    warpConnectorType::Pointer connector = warpConnectorType::New();
     //connector->SetInput( rgbFilter->GetOutput() );
-    connector->SetInput( thresholdFilter->GetOutput() );
+    connector->SetInput( checkerBoardFilter->GetOutput() );
     //connector->SetInput( filter->GetOutput() );
     //connector->SetInput( reader->GetOutput() );
     connector->Update();
@@ -444,7 +479,7 @@ int main(int argc, char **argv) {
 
     vtkSmartPointer<vtkFixedPointVolumeRayCastMapper> volumeMapperBinary =
             vtkSmartPointer<vtkFixedPointVolumeRayCastMapper>::New();
-    volumeMapperBinary->SetInputData(binaryThresholdConnector->GetOutput());
+    volumeMapperBinary->SetInputData(movingImageConnector->GetOutput());
 
 
     vtkSmartPointer<vtkColorTransferFunction>volumeColor =
@@ -551,8 +586,8 @@ int main(int argc, char **argv) {
     */
 
 
-    ConnectorType::Pointer originalSliceConnector = ConnectorType::New();
-    originalSliceConnector->SetInput( reader->GetOutput() );
+    warpConnectorType::Pointer originalSliceConnector = warpConnectorType::New();
+    originalSliceConnector->SetInput( fixedFilter->GetOutput() );
     originalSliceConnector->Update();
 
     int *dimensions = connector->GetOutput()->GetDimensions();
@@ -633,8 +668,31 @@ int main(int argc, char **argv) {
 
 
 
-
     return 0;
 }
 
 
+SmoothingFilterType::Pointer Smoothing(FixedImageReaderType::Pointer reader){
+
+    SmoothingFilterType::Pointer filter = SmoothingFilterType::New();
+
+    filter->SetInput( reader->GetOutput() );
+    filter->SetNumberOfIterations( 1 );
+    filter->SetTimeStep( 0.01 );
+    filter->SetConductanceParameter( 3.0 );
+
+
+
+    try
+    {
+        filter->Update();
+    }
+    catch( itk::ExceptionObject & error )
+    {
+        std::cerr << "Error: " << error << std::endl;
+        exit(-1);
+    }
+
+    return filter;
+
+}
