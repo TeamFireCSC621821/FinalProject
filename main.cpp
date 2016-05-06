@@ -54,7 +54,7 @@
 #include "itkBinaryThresholdImageFilter.h"
 
 #include <iostream>
-
+#include <fstream>
 
 using namespace std;
 
@@ -340,7 +340,7 @@ int main(int argc, char **argv) {
     BinaryThresholdImageFilterType::Pointer binaryThresholdFilter
             = BinaryThresholdImageFilterType::New();
     binaryThresholdFilter->SetInput(filter->GetOutput());
-    binaryThresholdFilter->SetLowerThreshold(200);
+    binaryThresholdFilter->SetLowerThreshold(220);
     binaryThresholdFilter->Update();
 
 
@@ -351,7 +351,7 @@ int main(int argc, char **argv) {
             = ThresholdImageFilterType::New();
     thresholdFilter->SetInput(filter->GetOutput());
     //thresholdFilter->ThresholdOutside(lowerThreshold, upperThreshold);
-    thresholdFilter->SetLower(200);
+    thresholdFilter->SetLower(220);
     thresholdFilter->SetOutsideValue(0);
     thresholdFilter->Update();
 
@@ -364,7 +364,7 @@ int main(int argc, char **argv) {
     typedef itk::BinaryBallStructuringElement<InputImageType::PixelType, InputImageType::ImageDimension>
             StructuringElementType;
     StructuringElementType structuringElement;
-    structuringElement.SetRadius(8);
+    structuringElement.SetRadius(4);
     structuringElement.CreateStructuringElement();
 
     typedef itk::BinaryMorphologicalClosingImageFilter <InputImageType, InputImageType, StructuringElementType>
@@ -402,14 +402,42 @@ int main(int argc, char **argv) {
             RelabelFilterType;
     RelabelFilterType::Pointer relabel =
             RelabelFilterType::New();
-    RelabelFilterType::ObjectSizeType minSize = 10;
+    RelabelFilterType::ObjectSizeType minSize = 100;
 
     relabel->SetInput(connected->GetOutput());
     relabel->SetMinimumObjectSize(minSize);
     relabel->Update();
 
+    int labelCount = relabel->GetNumberOfObjects();
     std::cout << "Number of labels: "
-    << relabel->GetNumberOfObjects() << endl;
+    << labelCount << endl;
+
+    ofstream out("out.csv");
+    for(int n = 0; n < labelCount; n++){
+        out  << n << "," << relabel->GetSizeOfObjectsInPixels()[n] << "," <<
+                relabel->GetSizeOfObjectsInPhysicalUnits()[n] << endl;
+    }
+    out.close();
+
+    /**
+    *
+    * Color Connected Components
+    *
+    */
+
+    typedef itk::RGBPixel<unsigned char>           RGBPixelType;
+    typedef itk::Image<RGBPixelType, Dimension>    RGBImageType;
+    RGBPixelType pixel;
+    pixel.SetRed(255);
+    pixel.SetBlue(255);
+    pixel.SetGreen(255);
+
+    typedef itk::LabelToRGBImageFilter<LabelImageType, RGBImageType> RGBFilterType;
+    RGBFilterType::Pointer rgbFilter =
+            RGBFilterType::New();
+    rgbFilter->SetInput( relabel->GetOutput() );
+    rgbFilter->SetBackgroundColor(pixel);
+    rgbFilter->Update();
 
 
 
@@ -651,9 +679,20 @@ int main(int argc, char **argv) {
     vtkSmartPointer<vtkImageMapper> imageMapperLeft = vtkSmartPointer<vtkImageMapper>::New();
     imageMapperLeft->SetInputData(rawConnector->GetOutput());
 
+
+    typedef itk::ImageToVTKImageFilter < RGBImageType > ColoredConnectorType;
+    ColoredConnectorType::Pointer coloredConnector = ColoredConnectorType::New();
+    coloredConnector->SetInput( rgbFilter->GetOutput() );
+    coloredConnector->Update();
+
+
+
     vtkSmartPointer<vtkImageMapper> imageMapperRight2 = vtkSmartPointer<vtkImageMapper>::New();
     //imageMapperRight2->SetInputData(binaryThresholdConnector->GetOutput());
-    imageMapperRight2->SetInputData(closingConnector->GetOutput());
+    //imageMapperRight2->SetInputData(closingConnector->GetOutput());
+    imageMapperRight2->SetInputData(coloredConnector->GetOutput());
+
+
     vtkSmartPointer<vtkImageMapper> imageMapperRight = vtkSmartPointer<vtkImageMapper>::New();
     imageMapperRight->SetInputData(preConnector->GetOutput());
 
