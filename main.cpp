@@ -52,6 +52,8 @@
 #include <FL/Fl_Slider.H>
 #include <FL/Fl_Progress.H>
 #include <math.h>
+#include <sstream>
+#include <string>
 
 
 //For Edge Preserving Smoothing
@@ -88,6 +90,35 @@ typedef float  OutputPixelType;
 typedef itk::Image< InputPixelType, Dimension > InputImageType;
 typedef itk::Image< OutputPixelType, Dimension > OutputImageType;
 typedef itk::ImageToVTKImageFilter < InputImageType > ConnectorType;
+
+void  processCallback( Fl_Widget*, void* );
+void process();
+void updateProgressBar( Fl_Progress *progress , float percent);
+void open_cb(Fl_Widget*, void*);
+void updateOutputFile();
+
+
+/**
+ * Declare global widget pointers so they can talk to eachother without having to have a bunch of
+ * pointers for arguments
+ */
+class Fl_Justify_Input;
+class SliderInput;
+class SliderFloatInput;
+
+Fl_Justify_Input*  inputSeries;
+Fl_Justify_Input*  outputFile;
+SliderInput *iterationsSlider;
+SliderFloatInput *timeStepSlider;
+SliderFloatInput *conductanceSlider;
+SliderInput *thresholdSlider;
+SliderInput *radiusSlider;
+SliderInput *distanceSlider;
+SliderInput *minSlider;
+Fl_Progress *progress;
+Fl_Button* directoryChooser;
+Fl_Button* but;
+string directoryValue;
 
 // helper class to format slice status message
 class StatusMessage {
@@ -262,11 +293,13 @@ class SliderInput : public Fl_Group {
             // fprintf(stderr, "SPRINTF(%d) -> '%s'\n", (int)(slider->value()+.5), s);
             input->value(s);          // pass slider's value to input
             recurse = 0;
+
         }
     }
 
     static void Slider_CB(Fl_Widget *w, void *data) {
         ((SliderInput*)data)->Slider_CB2();
+
     }
 
     void Input_CB2() {
@@ -282,9 +315,13 @@ class SliderInput : public Fl_Group {
             // fprintf(stderr, "SCANF('%s') -> %d\n", input->value(), val);
             slider->value(val);         // pass input's value to slider
             recurse = 0;
+
+
         }
     }
     static void Input_CB(Fl_Widget *w, void *data) {
+
+
         ((SliderInput*)data)->Input_CB2();
     }
 
@@ -338,6 +375,9 @@ class SliderFloatInput : public Fl_Group {
     }
 
     static void Slider_CB(Fl_Widget *w, void *data) {
+
+
+
         ((SliderFloatInput*)data)->Slider_CB2();
     }
 
@@ -353,10 +393,15 @@ class SliderFloatInput : public Fl_Group {
             }
             // fprintf(stderr, "SCANF('%s') -> %d\n", input->value(), val);
             slider->value(val);         // pass input's value to slider
+
+
             recurse = 0;
         }
     }
     static void Input_CB(Fl_Widget *w, void *data) {
+
+
+
         ((SliderFloatInput*)data)->Input_CB2();
     }
 
@@ -378,7 +423,7 @@ public:
     }
 
     // MINIMAL ACCESSORS --  Add your own as needed
-    float  value() const    { return((float)(slider->value() + 0.5)); }
+    float  value() const    { return((float)(slider->value())); }
     void value(float val)   { slider->value(val); Slider_CB2(); }
     void minumum(float val) { slider->minimum(val); }
     int  minumum() const  { return((float)slider->minimum()); }
@@ -453,10 +498,8 @@ public:
 
 
 vtkStandardNewMacro( CustomInteractor);
-void  processCallback( Fl_Widget*, void* );
-void process();
-void updateProgressBar( Fl_Progress *progress , float percent);
-void open_cb(Fl_Widget*, void*);
+
+
 
 int main(){
     
@@ -473,47 +516,47 @@ int main(){
     Fl_Window* win= new Fl_Window( 450,700, "SEGMENTATION PROCESSOR" );
     win->begin();
 
-    Fl_Button* directoryChooser = new Fl_Button( leftMargin, yOffsets[0], widgetWidth,widgetHeight, "Choose Directory" );
+    directoryChooser = new Fl_Button( leftMargin, yOffsets[0], widgetWidth,widgetHeight, "Choose Directory" );
 
-    Fl_Justify_Input*  inputSeries = new Fl_Justify_Input(leftMargin ,yOffsets[1], widgetWidth , widgetHeight, "Input Series");
+    inputSeries = new Fl_Justify_Input(leftMargin ,yOffsets[1], widgetWidth , widgetHeight, "Input Series");
     inputSeries->justify(FL_ALIGN_CENTER);
 
-    Fl_Justify_Input*  outputFile = new Fl_Justify_Input(leftMargin ,yOffsets[2], widgetWidth , widgetHeight, "Output File");
+    outputFile = new Fl_Justify_Input(leftMargin ,yOffsets[2], widgetWidth , widgetHeight, "Output File");
     outputFile->justify(FL_ALIGN_CENTER);
 
-    SliderInput *iterationsSlider = new SliderInput(leftMargin, yOffsets[3] ,widgetWidth,widgetHeight, "Iterations");
+    iterationsSlider = new SliderInput(leftMargin, yOffsets[3] ,widgetWidth,widgetHeight, "Iterations");
     iterationsSlider->bounds(1,10);       // set min/max for slider
-    iterationsSlider->value(5);           // set initial value
+    iterationsSlider->value(2);           // set initial value
 
-    SliderFloatInput *timeStepSlider = new SliderFloatInput(leftMargin,yOffsets[4],widgetWidth,widgetHeight, "TimeStep");
+    timeStepSlider = new SliderFloatInput(leftMargin,yOffsets[4],widgetWidth,widgetHeight, "TimeStep");
     timeStepSlider->bounds(0.0f ,0.25f);       // set min/max for slider
     timeStepSlider->value(0.01f);           // set initial value
 
-    SliderFloatInput *conductanceSlider = new SliderFloatInput(leftMargin,yOffsets[5],widgetWidth,widgetHeight, "Conductance Parameter");
+    conductanceSlider = new SliderFloatInput(leftMargin,yOffsets[5],widgetWidth,widgetHeight, "Conductance Parameter");
     conductanceSlider->bounds(0.0f ,0.5f);       // set min/max for slider
     conductanceSlider->value(0.3f);           // set initial value
 
 
-    SliderInput *thresholdSlider = new SliderInput(leftMargin,yOffsets[6],widgetWidth,widgetHeight, "Threshold");
+    thresholdSlider = new SliderInput(leftMargin,yOffsets[6],widgetWidth,widgetHeight, "Threshold");
     thresholdSlider->bounds(0,500);       // set min/max for slider
     thresholdSlider->value(250);           // set initial value
 
 
-    SliderInput *radiusSlider = new SliderInput(leftMargin,yOffsets[7],widgetWidth,widgetHeight, "Closing Filter Radius");
+    radiusSlider = new SliderInput(leftMargin,yOffsets[7],widgetWidth,widgetHeight, "Closing Filter Radius");
     radiusSlider->bounds(0,10);       // set min/max for slider
     radiusSlider->value(4);           // set initial value
 
-    SliderInput *distanceSlider = new SliderInput(leftMargin,yOffsets[8],widgetWidth,widgetHeight, "Distance Threshold");
+    distanceSlider = new SliderInput(leftMargin,yOffsets[8],widgetWidth,widgetHeight, "Distance Threshold");
     distanceSlider->bounds(0,30);       // set min/max for slider
     distanceSlider->value(2);           // set initial value
 
-    SliderInput *minSlider = new SliderInput(leftMargin,yOffsets[9],widgetWidth,widgetHeight, "Min Size");
+    minSlider = new SliderInput(leftMargin,yOffsets[9],widgetWidth,widgetHeight, "Min Size");
     minSlider->bounds(1,1000);       // set min/max for slider
     minSlider->value(100);           // set initial value
 
-    Fl_Button* but = new Fl_Button( leftMargin, yOffsets[10], widgetWidth, widgetHeight, "PROCESS" );
+    but = new Fl_Button( leftMargin, yOffsets[10], widgetWidth, widgetHeight, "PROCESS" );
 
-    Fl_Progress *progress = new Fl_Progress(leftMargin ,yOffsets[11], widgetWidth , widgetHeight);
+    progress = new Fl_Progress(leftMargin ,yOffsets[11], widgetWidth , widgetHeight);
     progress->minimum(0);                      // set progress range to be 0.0 ~ 1.0
     progress->maximum(1);
     progress->color(0x88888800);               // background color
@@ -528,7 +571,7 @@ int main(){
     progress->label(percent);              // update progress bar's label
     Fl::check();
     */
-    updateProgressBar(progress, 0.3f);
+    updateProgressBar(progress, 0.0f);
 
 
     win->end();
@@ -552,19 +595,32 @@ void updateProgressBar( Fl_Progress *progress , float percent){
 void processCallback( Fl_Widget* button , void *data ) {
     Fl_Progress *progress = (Fl_Progress*)data;
     button->deactivate();
+    directoryChooser->deactivate();
     Fl::check();
 
     //updateProgressBar(progress , 0.8f);
 
 
-    //process();
+    process();
 
     button->activate();
+    directoryChooser->activate();
     Fl::check();
 }
 
 void quit_callback(Fl_Widget*, void*) {
     exit(0);
+}
+
+void updateOutputFile(){
+    char buffer [50];
+
+    sprintf (buffer, "%soutput-%d-%.2f-%.2f-%d-%d-%d.txt", directoryValue.c_str() ,
+             iterationsSlider->value(), timeStepSlider->value(), conductanceSlider->value(),
+             thresholdSlider->value(), radiusSlider->value(), distanceSlider->value(), minSlider->value());
+
+    //outputFile->value(buffer);
+    cout << outputFile << endl;
 }
 
 void open_cb(Fl_Widget*, void*) {
@@ -586,21 +642,29 @@ void open_cb(Fl_Widget*, void*) {
     if ( chooser.value() == NULL )
     { fprintf(stderr, "(User hit 'Cancel')\n"); return; }
 
-    // Print what the user picked
-    fprintf(stderr, "--------------------\n");
-    fprintf(stderr, "DIRECTORY: '%s'\n", chooser.directory());
-    fprintf(stderr, "    VALUE: '%s'\n", chooser.value());
-    fprintf(stderr, "    COUNT: %d files selected\n", chooser.count());
+    //update the input series widget
+    inputSeries->value(chooser.value());
 
-    // Multiple files? Show all of them
-    if ( chooser.count() > 1 ) {
-        for ( int t=1; t<=chooser.count(); t++ ) {
-            fprintf(stderr, " VALUE[%d]: '%s'\n", t, chooser.value(t));
-        }
+
+    string directoryTemp(chooser.value());
+    if(directoryTemp.back() != '/' ){
+        directoryTemp+= '/';
     }
+
+    directoryValue = directoryTemp;
+
+    char buffer [50];
+    sprintf (buffer, "%soutput-%d-%.2f-%.2f-%d-%d-%d.txt", directoryValue.c_str() ,
+             iterationsSlider->value(), timeStepSlider->value(), conductanceSlider->value(),
+             thresholdSlider->value(), radiusSlider->value(), distanceSlider->value(), minSlider->value());
+    outputFile->value(buffer);
+
+
 }
 
 void process() {
+    cout << "time slider:" << timeStepSlider->value() << endl;
+
     std::vector<vtkSmartPointer<vtkRenderWindowInteractor> > interactors;
 
 
@@ -617,7 +681,7 @@ void process() {
 
     //nameGenerator->SetUseSeriesDetails( true );
     //nameGenerator->AddSeriesRestriction("0008|0021" );
-    nameGenerator->SetDirectory( "/Users/mac/DICOMSLIDES/DCOM_7");
+    nameGenerator->SetDirectory(inputSeries->value());
 
 /*
     typedef float InputPixelType;
@@ -671,9 +735,9 @@ void process() {
     FilterType::Pointer filter = FilterType::New();
 
     filter->SetInput( reader->GetOutput() );
-    filter->SetNumberOfIterations( 1 );
-    filter->SetTimeStep( 0.01 );
-    filter->SetConductanceParameter( 3.0 );
+    filter->SetNumberOfIterations( iterationsSlider->value() );
+    filter->SetTimeStep( timeStepSlider->value() );
+    filter->SetConductanceParameter( conductanceSlider->value() );
 
 
 
@@ -702,7 +766,7 @@ void process() {
     BinaryThresholdImageFilterType::Pointer binaryThresholdFilter
             = BinaryThresholdImageFilterType::New();
     binaryThresholdFilter->SetInput(filter->GetOutput());
-    binaryThresholdFilter->SetLowerThreshold(220);
+    binaryThresholdFilter->SetLowerThreshold(thresholdSlider->value());
     binaryThresholdFilter->Update();
 
 
@@ -713,7 +777,7 @@ void process() {
             = ThresholdImageFilterType::New();
     thresholdFilter->SetInput(filter->GetOutput());
     //thresholdFilter->ThresholdOutside(lowerThreshold, upperThreshold);
-    thresholdFilter->SetLower(220);
+    thresholdFilter->SetLower(thresholdSlider->value());
     thresholdFilter->SetOutsideValue(0);
     thresholdFilter->Update();
 
@@ -757,14 +821,14 @@ void process() {
     ConnectedComponentImageFilterType::Pointer connected =
             ConnectedComponentImageFilterType::New ();
     connected->SetInput(closingFilter->GetOutput());
-    connected->SetDistanceThreshold(5);
+    connected->SetDistanceThreshold(distanceSlider->value());
 
 
     typedef itk::RelabelComponentImageFilter <LabelImageType, LabelImageType >
             RelabelFilterType;
     RelabelFilterType::Pointer relabel =
             RelabelFilterType::New();
-    RelabelFilterType::ObjectSizeType minSize = 100;
+    RelabelFilterType::ObjectSizeType minSize = minSlider->value();
 
     relabel->SetInput(connected->GetOutput());
     relabel->SetMinimumObjectSize(minSize);
@@ -774,7 +838,7 @@ void process() {
     std::cout << "Number of labels: "
     << labelCount << endl;
 
-    ofstream out("out.csv");
+    ofstream out(outputFile->value());
     for(int n = 0; n < labelCount; n++){
         out  << n << "," << relabel->GetSizeOfObjectsInPixels()[n] << "," <<
                 relabel->GetSizeOfObjectsInPhysicalUnits()[n] << endl;
