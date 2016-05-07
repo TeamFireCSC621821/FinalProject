@@ -42,6 +42,17 @@
 #include <vtkTextMapper.h>
 #include "itkBinaryBallStructuringElement.h"
 #include "itkSubtractImageFilter.h"
+#include <FL/Fl.H>
+#include <FL/Fl_window.H>
+#include <FL/Fl_Button.H>
+#include <FL/Fl_Menu_Bar.H>
+#include <FL/Fl_File_Chooser.H>
+#include <FL/Fl_Int_Input.H>
+#include <FL/Fl_Float_Input.H>
+#include <FL/Fl_Slider.H>
+#include <FL/Fl_Progress.H>
+#include <math.h>
+
 
 //For Edge Preserving Smoothing
 
@@ -233,12 +244,363 @@ protected:
 };
 
 
+class SliderInput : public Fl_Group {
+    Fl_Int_Input *input;
+    Fl_Slider    *slider;
+
+    // CALLBACK HANDLERS
+    //    These 'attach' the input and slider's values together.
+    //
+    void Slider_CB2() {
+        static int recurse = 0;
+        if ( recurse ) {
+            return;
+        } else {
+            recurse = 1;
+            char s[80];
+            sprintf(s, "%d", (int)(slider->value() + .5));
+            // fprintf(stderr, "SPRINTF(%d) -> '%s'\n", (int)(slider->value()+.5), s);
+            input->value(s);          // pass slider's value to input
+            recurse = 0;
+        }
+    }
+
+    static void Slider_CB(Fl_Widget *w, void *data) {
+        ((SliderInput*)data)->Slider_CB2();
+    }
+
+    void Input_CB2() {
+        static int recurse = 0;
+        if ( recurse ) {
+            return;
+        } else {
+            recurse = 1;
+            int val = 0;
+            if ( sscanf(input->value(), "%d", &val) != 1 ) {
+                val = 0;
+            }
+            // fprintf(stderr, "SCANF('%s') -> %d\n", input->value(), val);
+            slider->value(val);         // pass input's value to slider
+            recurse = 0;
+        }
+    }
+    static void Input_CB(Fl_Widget *w, void *data) {
+        ((SliderInput*)data)->Input_CB2();
+    }
+
+public:
+    // CTOR
+    SliderInput(int x, int y, int w, int h, const char *l=0) : Fl_Group(x,y,w,h,l) {
+        int in_w = 40;
+        input  = new Fl_Int_Input(x, y, in_w, h);
+        input->callback(Input_CB, (void*)this);
+        input->when(FL_WHEN_ENTER_KEY|FL_WHEN_NOT_CHANGED);
+
+        slider = new Fl_Slider(x+in_w, y, w-in_w, h);
+        slider->type(1);
+        slider->callback(Slider_CB, (void*)this);
+
+        bounds(1, 10);     // some usable default
+        value(5);          // some usable default
+        end();             // close the group
+    }
+
+    // MINIMAL ACCESSORS --  Add your own as needed
+    int  value() const    { return((int)(slider->value() + 0.5)); }
+    void value(int val)   { slider->value(val); Slider_CB2(); }
+    void minumum(int val) { slider->minimum(val); }
+    int  minumum() const  { return((int)slider->minimum()); }
+    void maximum(int val) { slider->maximum(val); }
+    int  maximum() const  { return((int)slider->maximum()); }
+    void bounds(int low, int high) { slider->bounds(low, high); }
+};
+
+
+class SliderFloatInput : public Fl_Group {
+    Fl_Float_Input *input;
+    Fl_Slider    *slider;
+
+    // CALLBACK HANDLERS
+    //    These 'attach' the input and slider's values together.
+    //
+    void Slider_CB2() {
+        static int recurse = 0;
+        if ( recurse ) {
+            return;
+        } else {
+            recurse = 1;
+            char s[80];
+            sprintf(s, "%.2f", (float)(slider->value() ));
+            // fprintf(stderr, "SPRINTF(%d) -> '%s'\n", (int)(slider->value()+.5), s);
+            input->value(s);          // pass slider's value to input
+            recurse = 0;
+        }
+    }
+
+    static void Slider_CB(Fl_Widget *w, void *data) {
+        ((SliderFloatInput*)data)->Slider_CB2();
+    }
+
+    void Input_CB2() {
+        static int recurse = 0;
+        if ( recurse ) {
+            return;
+        } else {
+            recurse = 1;
+            int val = 0;
+            if ( sscanf(input->value(), "%.2f", &val) != 1 ) {
+                val = 0;
+            }
+            // fprintf(stderr, "SCANF('%s') -> %d\n", input->value(), val);
+            slider->value(val);         // pass input's value to slider
+            recurse = 0;
+        }
+    }
+    static void Input_CB(Fl_Widget *w, void *data) {
+        ((SliderFloatInput*)data)->Input_CB2();
+    }
+
+public:
+    // CTOR
+    SliderFloatInput(int x, int y, int w, int h, const char *l=0) : Fl_Group(x,y,w,h,l) {
+        int in_w = 40;
+        input  = new Fl_Float_Input(x, y, in_w, h);
+        input->callback(Input_CB, (void*)this);
+        input->when(FL_WHEN_ENTER_KEY|FL_WHEN_NOT_CHANGED);
+
+        slider = new Fl_Slider(x+in_w, y, w-in_w, h);
+        slider->type(1);
+        slider->callback(Slider_CB, (void*)this);
+
+        bounds(1, 10);     // some usable default
+        value(5);          // some usable default
+        end();             // close the group
+    }
+
+    // MINIMAL ACCESSORS --  Add your own as needed
+    float  value() const    { return((float)(slider->value() + 0.5)); }
+    void value(float val)   { slider->value(val); Slider_CB2(); }
+    void minumum(float val) { slider->minimum(val); }
+    int  minumum() const  { return((float)slider->minimum()); }
+    void maximum(float val) { slider->maximum(val); }
+    int  maximum() const  { return((int)slider->maximum()); }
+    void bounds(float low, float high) { slider->bounds(low, high); }
+};
+
+class Fl_Justify_Input : public Fl_Group {
+    Fl_Input *inp;
+    Fl_Box   *box;
+public:
+    // Ctor
+    Fl_Justify_Input(int X,int Y,int W,int H,const char *L=0):Fl_Group(X,Y,W,H,L) {
+        Fl_Group::box(FL_NO_BOX);
+        box = new Fl_Box(X,Y,W,H);
+        box->color(FL_WHITE);
+        box->box(FL_DOWN_BOX);
+        inp = new Fl_Input(X,Y,W,H);
+        inp->hide();
+        inp->color(FL_WHITE);
+        inp->readonly(1);
+        end();
+    }
+    // Set text justification. Expects one of:
+    // FL_ALIGN_LEFT, FL_ALIGN_CENTER, FL_ALIGN_RIGHT.
+    //
+    void justify(Fl_Align val) {
+        box->align(val|FL_ALIGN_INSIDE);
+    }
+    // Returns text justification
+    Fl_Align justify() const {
+        return box->align();
+    }
+    // Sets the text value
+    void value(const char *val) {
+        box->copy_label(val);
+        inp->value(val);
+    }
+    // Gets the text value
+    const char *value() const {
+        return inp->value();
+    }
+    int handle(int e) {
+        switch (e) {
+            case FL_PUSH:
+            case FL_FOCUS:
+                if (!inp->visible()) {
+                    // Make input widget 'appear' in place of the box
+                    box->hide();
+                    inp->show();
+                    inp->value(box->label());
+                    redraw();
+                }
+                break;
+            case FL_UNFOCUS:
+                if (inp->visible()) {
+                    // Replace input widget with justified box
+                    box->show();
+                    inp->hide();
+                    box->label(inp->value());
+                    redraw();
+                }
+                break;
+            default:
+                break;
+        }
+        return(Fl_Group::handle(e));
+    }
+};
+
 
 
 vtkStandardNewMacro( CustomInteractor);
+void  processCallback( Fl_Widget*, void* );
+void process();
+void updateProgressBar( Fl_Progress *progress , float percent);
+void open_cb(Fl_Widget*, void*);
+
+int main(){
+    
+    int widgetHeight = 25;
+    int widgetWidth = 400;
+    int leftMargin = 25;
+    int topOffset = 25;
+    int ySpacing = 55;
+    int yOffsets[12];
+    for (int i = 0; i < 12; i++){
+        yOffsets[i] = topOffset + (i*ySpacing);
+    }
+
+    Fl_Window* win= new Fl_Window( 450,700, "SEGMENTATION PROCESSOR" );
+    win->begin();
+
+    Fl_Button* directoryChooser = new Fl_Button( leftMargin, yOffsets[0], widgetWidth,widgetHeight, "Choose Directory" );
+
+    Fl_Justify_Input*  inputSeries = new Fl_Justify_Input(leftMargin ,yOffsets[1], widgetWidth , widgetHeight, "Input Series");
+    inputSeries->justify(FL_ALIGN_CENTER);
+
+    Fl_Justify_Input*  outputFile = new Fl_Justify_Input(leftMargin ,yOffsets[2], widgetWidth , widgetHeight, "Output File");
+    outputFile->justify(FL_ALIGN_CENTER);
+
+    SliderInput *iterationsSlider = new SliderInput(leftMargin, yOffsets[3] ,widgetWidth,widgetHeight, "Iterations");
+    iterationsSlider->bounds(1,10);       // set min/max for slider
+    iterationsSlider->value(5);           // set initial value
+
+    SliderFloatInput *timeStepSlider = new SliderFloatInput(leftMargin,yOffsets[4],widgetWidth,widgetHeight, "TimeStep");
+    timeStepSlider->bounds(0.0f ,0.25f);       // set min/max for slider
+    timeStepSlider->value(0.01f);           // set initial value
+
+    SliderFloatInput *conductanceSlider = new SliderFloatInput(leftMargin,yOffsets[5],widgetWidth,widgetHeight, "Conductance Parameter");
+    conductanceSlider->bounds(0.0f ,0.5f);       // set min/max for slider
+    conductanceSlider->value(0.3f);           // set initial value
 
 
-int main(int argc, char **argv) {
+    SliderInput *thresholdSlider = new SliderInput(leftMargin,yOffsets[6],widgetWidth,widgetHeight, "Threshold");
+    thresholdSlider->bounds(0,500);       // set min/max for slider
+    thresholdSlider->value(250);           // set initial value
+
+
+    SliderInput *radiusSlider = new SliderInput(leftMargin,yOffsets[7],widgetWidth,widgetHeight, "Closing Filter Radius");
+    radiusSlider->bounds(0,10);       // set min/max for slider
+    radiusSlider->value(4);           // set initial value
+
+    SliderInput *distanceSlider = new SliderInput(leftMargin,yOffsets[8],widgetWidth,widgetHeight, "Distance Threshold");
+    distanceSlider->bounds(0,30);       // set min/max for slider
+    distanceSlider->value(2);           // set initial value
+
+    SliderInput *minSlider = new SliderInput(leftMargin,yOffsets[9],widgetWidth,widgetHeight, "Min Size");
+    minSlider->bounds(1,1000);       // set min/max for slider
+    minSlider->value(100);           // set initial value
+
+    Fl_Button* but = new Fl_Button( leftMargin, yOffsets[10], widgetWidth, widgetHeight, "PROCESS" );
+
+    Fl_Progress *progress = new Fl_Progress(leftMargin ,yOffsets[11], widgetWidth , widgetHeight);
+    progress->minimum(0);                      // set progress range to be 0.0 ~ 1.0
+    progress->maximum(1);
+    progress->color(0x88888800);               // background color
+    progress->selection_color(0x4444ff00);     // progress bar color
+    progress->labelcolor(FL_WHITE);            // percent text color
+
+
+/*
+    progress->value(0);
+    char percent[10];
+    sprintf(percent, "%d%%", 0);
+    progress->label(percent);              // update progress bar's label
+    Fl::check();
+    */
+    updateProgressBar(progress, 0.3f);
+
+
+    win->end();
+    directoryChooser->callback(( Fl_Callback* ) open_cb);
+    but -> callback( ( Fl_Callback* ) processCallback , &progress);
+    win->show();
+    cout << "stuff" << endl;
+    return  Fl::run();
+}
+
+
+void updateProgressBar( Fl_Progress *progress , float percent){
+    progress->value(percent);
+    char percentLabel[10];
+    sprintf(percentLabel, "%d%%", percent);
+    progress->label(percentLabel);              // update progress bar's label
+    Fl::check();
+}
+
+
+void processCallback( Fl_Widget* button , void *data ) {
+    Fl_Progress *progress = (Fl_Progress*)data;
+    button->deactivate();
+    Fl::check();
+
+    //updateProgressBar(progress , 0.8f);
+
+
+    //process();
+
+    button->activate();
+    Fl::check();
+}
+
+void quit_callback(Fl_Widget*, void*) {
+    exit(0);
+}
+
+void open_cb(Fl_Widget*, void*) {
+
+    // Create the file chooser, and show it
+    Fl_File_Chooser chooser(".",                        // directory
+                            "*",                        // filter
+                            Fl_File_Chooser::DIRECTORY,     // chooser type
+                            "Choose DICOM Series");        // title
+    chooser.show();
+
+    // Block until user picks something.
+    //     (The other way to do this is to use a callback())
+    //
+    while(chooser.shown())
+    { Fl::wait(); }
+
+    // User hit cancel?
+    if ( chooser.value() == NULL )
+    { fprintf(stderr, "(User hit 'Cancel')\n"); return; }
+
+    // Print what the user picked
+    fprintf(stderr, "--------------------\n");
+    fprintf(stderr, "DIRECTORY: '%s'\n", chooser.directory());
+    fprintf(stderr, "    VALUE: '%s'\n", chooser.value());
+    fprintf(stderr, "    COUNT: %d files selected\n", chooser.count());
+
+    // Multiple files? Show all of them
+    if ( chooser.count() > 1 ) {
+        for ( int t=1; t<=chooser.count(); t++ ) {
+            fprintf(stderr, " VALUE[%d]: '%s'\n", t, chooser.value(t));
+        }
+    }
+}
+
+void process() {
     std::vector<vtkSmartPointer<vtkRenderWindowInteractor> > interactors;
 
 
@@ -322,7 +684,7 @@ int main(int argc, char **argv) {
     catch( itk::ExceptionObject & error )
     {
         std::cerr << "Error: " << error << std::endl;
-        return EXIT_FAILURE;
+        //return EXIT_FAILURE;
     }
 
 
@@ -746,7 +1108,7 @@ int main(int argc, char **argv) {
 
 
 
-    return 0;
+    //return 0;
 }
 
 
