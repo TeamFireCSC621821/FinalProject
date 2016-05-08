@@ -150,6 +150,7 @@ void UI::open_cb(Fl_Widget *w, void *data) {
     parent->activateSliders();
     parent->but->activate();
     parent->clearOutputFile();
+    parent->updateProgressBar(0.0f);
 
 
 

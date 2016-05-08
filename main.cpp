@@ -399,6 +399,7 @@ void process() {
             = BinaryThresholdImageFilterType::New();
     binaryThresholdFilter->SetInput(filter->GetOutput());
     binaryThresholdFilter->SetLowerThreshold(ui->getThreshold());
+    binaryThresholdFilter->SetNumberOfThreads(8);
     binaryThresholdFilter->Update();
 
     ui->updateProgressBar(0.3f);
@@ -412,6 +413,7 @@ void process() {
     //thresholdFilter->ThresholdOutside(lowerThreshold, upperThreshold);
     thresholdFilter->SetLower(ui->getThreshold());
     thresholdFilter->SetOutsideValue(0);
+    thresholdFilter->SetNumberOfThreads(8);
     thresholdFilter->Update();
 
     ui->updateProgressBar(0.4f);
@@ -435,6 +437,7 @@ void process() {
     closingFilter->SetInput(binaryThresholdFilter->GetOutput());
     closingFilter->SetKernel(structuringElement);
     closingFilter->Update();
+    closingFilter->SetNumberOfThreads(8);
 
 
     ui->updateProgressBar(0.5f);
@@ -458,6 +461,8 @@ void process() {
             ConnectedComponentImageFilterType::New ();
     connected->SetInput(closingFilter->GetOutput());
     connected->SetDistanceThreshold(ui->getDistance());
+    connected->SetNumberOfThreads(8);
+    connected->Update();
 
     ui->updateProgressBar(0.6f);
 
@@ -469,11 +474,12 @@ void process() {
 
     relabel->SetInput(connected->GetOutput());
     relabel->SetMinimumObjectSize(minSize);
+    relabel->SetNumberOfThreads(8);
     relabel->Update();
 
+
     int labelCount = relabel->GetNumberOfObjects();
-    std::cout << "Number of labels: "
-    << labelCount << endl;
+    //std::cout << "Number of labels: " << labelCount << endl;
 
     ofstream out(ui->getOutputFile());
     for(int n = 0; n < labelCount; n++){
@@ -481,6 +487,26 @@ void process() {
                 relabel->GetSizeOfObjectsInPhysicalUnits()[n] << endl;
     }
     out.close();
+
+    stringstream stats;
+    stats << "Iterations : " << ui->getIterations();
+    stats << "\n";
+    stats << "Time Step : " ;
+    stats << ui->getTimeStep();
+    stats << "\n";
+    stats << "Conductance Parameter : ";
+    stats << ui->getConductance();
+    stats << "\n";
+    stats << "Threshold : " << ui->getThreshold();
+    stats << "\n";
+    stats << "Closing Filter Radius : " << ui->getRadius();
+    stats << "\n";
+    stats << "Distance Threshold : " << ui->getDistance();
+    stats << "\n";
+    stats << "Min Component Size : " << ui->getMin() << "\n";
+    stats << "Number of labels: " << labelCount;
+
+    cout << stats.str() << endl;
 
     ui->updateProgressBar(0.7f);
 
@@ -497,16 +523,24 @@ void process() {
     pixel.SetBlue(255);
     pixel.SetGreen(255);
 
-    ui->updateProgressBar(0.8f);
+
 
     typedef itk::LabelToRGBImageFilter<LabelImageType, RGBImageType> RGBFilterType;
     RGBFilterType::Pointer rgbFilter =
             RGBFilterType::New();
     rgbFilter->SetInput( relabel->GetOutput() );
+    rgbFilter->SetBackgroundValue(255);
     rgbFilter->SetBackgroundColor(pixel);
+
     rgbFilter->Update();
 
-    ui->updateProgressBar(0.9f);
+    cout << "background color is " << rgbFilter->GetBackgroundColor() <<endl;
+    cout << "background value is " << rgbFilter->GetBackgroundValue() <<endl;
+
+
+    ui->updateProgressBar(0.8f);
+
+
 
 
     /**
@@ -514,6 +548,22 @@ void process() {
     * VTK
     *
     */
+
+    // usage hint message
+    vtkSmartPointer<vtkTextProperty> usageTextProp = vtkSmartPointer<vtkTextProperty>::New();
+    usageTextProp->SetFontFamilyToCourier();
+    usageTextProp->SetFontSize(25);
+    usageTextProp->SetVerticalJustificationToTop();
+    usageTextProp->SetJustificationToLeft();
+
+    vtkSmartPointer<vtkTextProperty> usageTextProp2 = vtkSmartPointer<vtkTextProperty>::New();
+    usageTextProp2->SetFontFamilyToCourier();
+    usageTextProp2->SetFontSize(16);
+    usageTextProp2->SetColor(0.0,0.0,0.0);
+    usageTextProp2->SetBackgroundColor(1,1,1);
+    usageTextProp2->SetBackgroundOpacity(0.5f);
+    usageTextProp2->SetVerticalJustificationToTop();
+    usageTextProp2->SetJustificationToLeft();
 
     //typedef itk::ImageToVTKImageFilter < RGBImageType > ConnectorType;
     ConnectorType::Pointer rawConnector = ConnectorType::New();
@@ -563,7 +613,7 @@ void process() {
     // keyboard-based interaction with the scene.
 
     vtkSmartPointer<vtkRenderer> ren = vtkSmartPointer<vtkRenderer>::New();
-
+    vtkSmartPointer<vtkRenderer> statRen = vtkSmartPointer<vtkRenderer>::New();
 
     vtkSmartPointer<vtkRenderer> rendererVolOriginal = vtkSmartPointer<vtkRenderer>::New();
     vtkSmartPointer<vtkRenderer> rendererBinaryOutput = vtkSmartPointer<vtkRenderer>::New();
@@ -578,6 +628,10 @@ void process() {
 
     renWin->AddRenderer(rendererBinaryOutput);
     rendererBinaryOutput->SetViewport(xmins[1],ymins[1],xmaxs[1],ymaxs[1]);
+
+    renWin->AddRenderer(statRen);
+    statRen->SetBackground(1,1,1);
+    statRen->SetViewport(xmins[0],ymins[0],xmaxs[0],ymaxs[0]);
 
 
 
@@ -598,10 +652,6 @@ void process() {
 
     vtkSmartPointer<vtkColorTransferFunction>volumeColor =
          vtkSmartPointer<vtkColorTransferFunction>::New();
-       //volumeColor->AddRGBPoint(0,    0.0, 0.0, 0.0);
-       //volumeColor->AddRGBPoint(500,  1.0, 0.5, 0.3);
-      // volumeColor->AddRGBPoint(1000, 1.0, 0.5, 0.3);
-    //   volumeColor->AddRGBPoint(1150, 1.0, 1.0, 0.9);
     volumeColor->AddRGBPoint(1150,    0.0, 0.0, 0.0);
     volumeColor->AddRGBPoint(1000,  1.0, 0.5, 0.3);
     volumeColor->AddRGBPoint(500, 1.0, 0.5, 0.3);
@@ -617,16 +667,7 @@ void process() {
     volumeScalarOpacity->AddPoint(1000, 0.15);
     volumeScalarOpacity->AddPoint(1150, 0.85);
 
-    //volumeScalarOpacity->AddPoint(1150,    0.00);
-    //volumeScalarOpacity->AddPoint(1000,  0.15);
-    //volumeScalarOpacity->AddPoint(500, 0.15);
-    //volumeScalarOpacity->AddPoint(0, 0.85);
 
-       // The gradient opacity function is used to decrease the opacity
-       // in the "flat" regions of the volume while maintaining the opacity
-       // at the boundaries between tissue types.  The gradient is measured
-       // as the amount by which the intensity changes over unit distance.
-       // For most medical data, the unit distance is 1mm.
        vtkSmartPointer<vtkPiecewiseFunction> volumeGradientOpacity =
          vtkSmartPointer<vtkPiecewiseFunction>::New();
        volumeGradientOpacity->AddPoint(0,   0.0);
@@ -652,6 +693,47 @@ void process() {
        volume->SetProperty(volumeProperty);
 
 
+    vtkSmartPointer<vtkTextMapper> usageTextTopLeft = vtkSmartPointer<vtkTextMapper>::New();
+    usageTextTopLeft->SetInput("Original");
+    usageTextTopLeft->SetTextProperty(usageTextProp2);
+
+    vtkSmartPointer<vtkActor2D> usageTextActorTopLeft = vtkSmartPointer<vtkActor2D>::New();
+    usageTextActorTopLeft->SetMapper(usageTextTopLeft);
+    usageTextActorTopLeft->GetPositionCoordinate()->SetCoordinateSystemToNormalizedDisplay();
+    usageTextActorTopLeft->GetPositionCoordinate()->SetValue( 0.05, 0.95);
+
+
+    vtkSmartPointer<vtkTextMapper> usageTextTopRight = vtkSmartPointer<vtkTextMapper>::New();
+    usageTextTopRight->SetInput("Post Threshold Filter");
+    usageTextTopRight->SetTextProperty(usageTextProp2);
+
+    vtkSmartPointer<vtkActor2D> usageTextActorTopRight = vtkSmartPointer<vtkActor2D>::New();
+    usageTextActorTopRight->SetMapper(usageTextTopRight);
+    usageTextActorTopRight->GetPositionCoordinate()->SetCoordinateSystemToNormalizedDisplay();
+    usageTextActorTopRight->GetPositionCoordinate()->SetValue( 0.55, 0.95);
+
+
+    vtkSmartPointer<vtkTextMapper> usageTextBottomRight = vtkSmartPointer<vtkTextMapper>::New();
+    usageTextBottomRight->SetInput("Post Closing Filter");
+    usageTextBottomRight->SetTextProperty(usageTextProp2);
+
+    vtkSmartPointer<vtkActor2D> usageTextActorBottomRight = vtkSmartPointer<vtkActor2D>::New();
+    usageTextActorBottomRight->SetMapper(usageTextBottomRight);
+    usageTextActorBottomRight->GetPositionCoordinate()->SetCoordinateSystemToNormalizedDisplay();
+    usageTextActorBottomRight->GetPositionCoordinate()->SetValue( 0.55, 0.45);
+
+
+    vtkSmartPointer<vtkTextMapper> usageTextBottomLeft = vtkSmartPointer<vtkTextMapper>::New();
+    usageTextBottomLeft->SetInput(stats.str().c_str());
+    usageTextBottomLeft->SetTextProperty(usageTextProp2);
+
+    vtkSmartPointer<vtkActor2D> usageTextActorBottomLeft = vtkSmartPointer<vtkActor2D>::New();
+    usageTextActorBottomLeft->SetMapper(usageTextBottomLeft);
+    usageTextActorBottomLeft->GetPositionCoordinate()->SetCoordinateSystemToNormalizedDisplay();
+    usageTextActorBottomLeft->GetPositionCoordinate()->SetValue( 0.05, 0.45);
+
+
+
     vtkSmartPointer<vtkVolume> volumeOriginal =
             vtkSmartPointer<vtkVolume>::New();
     volumeOriginal->SetMapper(volumeMapperOriginal);
@@ -664,6 +746,7 @@ void process() {
     volumeBinary->SetProperty(volumeProperty);
 
        // Finally, add the volume to the renderer
+     ren->AddActor2D(usageTextActorTopRight);
      ren->SetBackground(1,1,1);
      ren->AddViewProp(volume);
      ren->ResetCamera();
@@ -671,13 +754,16 @@ void process() {
 
 
     rendererVolOriginal ->SetBackground(1,1,1);
+    rendererVolOriginal->AddActor2D(usageTextActorTopLeft);
     rendererVolOriginal ->AddViewProp(volumeOriginal);
     rendererVolOriginal ->ResetCamera();
 
     rendererBinaryOutput ->SetBackground(1,1,1);
+    rendererBinaryOutput ->AddActor2D(usageTextActorBottomRight);
     rendererBinaryOutput ->AddViewProp(volumeBinary);
     rendererBinaryOutput ->ResetCamera();
 
+    statRen->AddActor2D(usageTextActorBottomLeft);
 
     rendererVolOriginal->SetActiveCamera(rendererBinaryOutput->GetActiveCamera());
     ren->SetActiveCamera(rendererVolOriginal->GetActiveCamera());
@@ -685,14 +771,14 @@ void process() {
 
 
 
+
+
       // Increase the size of the render window
-     renWin->SetSize(600, 600);
+    renWin->SetSize(600, 600);
     renWin->Render();
 
-      // Interact with the data.
-     //iren->Initialize();
-     //iren->Start();
 
+    ui->updateProgressBar(0.9f);
     /**
     *
     * Visualize original
@@ -788,12 +874,7 @@ void process() {
     sliceTextActor->SetMapper(sliceTextMapper);
     sliceTextActor->SetPosition(15, 10);
 
-    // usage hint message
-    vtkSmartPointer<vtkTextProperty> usageTextProp = vtkSmartPointer<vtkTextProperty>::New();
-    usageTextProp->SetFontFamilyToCourier();
-    usageTextProp->SetFontSize(25);
-    usageTextProp->SetVerticalJustificationToTop();
-    usageTextProp->SetJustificationToLeft();
+
 
     vtkSmartPointer<vtkTextMapper> usageTextMapper = vtkSmartPointer<vtkTextMapper>::New();
     usageTextMapper->SetInput("Original Image Set");
@@ -820,7 +901,7 @@ void process() {
     vtkSmartPointer<vtkActor2D> usageTextActorRight = vtkSmartPointer<vtkActor2D>::New();
     usageTextActorRight->SetMapper(usageTextMapperRight);
     usageTextActorRight->GetPositionCoordinate()->SetCoordinateSystemToNormalizedDisplay();
-    usageTextActorRight->GetPositionCoordinate()->SetValue( 0.75, 0.95);
+    usageTextActorRight->GetPositionCoordinate()->SetValue( 0.70, 0.95);
 
 
     customInteractorStyle->SetStatusMapper(sliceTextMapper);
