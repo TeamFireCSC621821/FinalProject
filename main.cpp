@@ -86,7 +86,7 @@ typedef itk::ImageToVTKImageFilter < InputImageType > ConnectorType;
 
 //registration
 //const unsigned int Dimension = 3;
-typedef unsigned short PixelType;
+typedef float PixelType;
 typedef itk::Image< PixelType, Dimension > FixedImageType;
 typedef itk::Image< PixelType, Dimension > MovingImageType;
 
@@ -268,8 +268,8 @@ int main(int argc, char **argv) {
 
     //nameGenerator->SetUseSeriesDetails( true );
     //nameGenerator->AddSeriesRestriction("0008|0021" );
-    fixedNameGenerator->SetDirectory( "/Test1");
-    movingNameGenerator->SetDirectory( "/Test2");
+    fixedNameGenerator->SetDirectory( "C:/Users/Guan/Desktop/images/GSM714050/Skull/CT");
+    movingNameGenerator->SetDirectory( "C:/Users/Guan/Desktop/images/GSM714050/Skull/PT");
 
 
     typedef std::vector< std::string >    SeriesIdContainer;
@@ -354,9 +354,10 @@ int main(int argc, char **argv) {
     fixedImageCaster->SetInput(fixedFilter->GetOutput());
     movingImageCaster->SetInput(movingFilter->GetOutput());
 
+	/*
     for(histogramMatchPoints = 6; histogramMatchPoints <= 8; histogramMatchPoints++) {
         for(standardDeviations = 0.5; standardDeviations <= 1.5; standardDeviations+=0.5) {
-
+	*/
 
 
             typedef itk::HistogramMatchingImageFilter<InternalImageType, InternalImageType> MatchingFilterType;
@@ -399,7 +400,7 @@ int main(int argc, char **argv) {
             warper->SetOutputDirection(fixedImage->GetDirection());
 
             warper->SetDisplacementField(filter->GetOutput());
-
+			
 
 
             /*
@@ -418,8 +419,8 @@ int main(int argc, char **argv) {
              */
 
             std::ostringstream oss;
-            oss << "/output-" << histogramLevel << "-" << histogramMatchPoints <<
-                    "-" << standardDeviations << "-" << numberOfIterations;
+            oss << "output-" << histogramLevel << "-" << histogramMatchPoints <<
+                    "-" << standardDeviations << "-" << numberOfIterations << "/";
             std::string outputDirStr(oss.str());
             const char *outputDirectory = outputDirStr.c_str();
 
@@ -432,11 +433,12 @@ int main(int argc, char **argv) {
 
             SeriesWriterType::Pointer seriesWriter = SeriesWriterType::New();
             seriesWriter->SetInput(warper->GetOutput());
+			//seriesWriter->SetInput(movingImageReader->GetOutput());
             seriesWriter->SetImageIO(movingDicomIO);
 
-            NamesGeneratorType::Pointer outputNameGenerator = NamesGeneratorType::New();
-            outputNamesGenerator->SetOutputDirectory(outputDirectory);
-            seriesWriter->SetFileNames(outputNamesGenerator->GetOutputFileNames());
+//            NamesGeneratorType::Pointer outputNamesGenerator = NamesGeneratorType::New();
+            movingNameGenerator->SetOutputDirectory(outputDirectory);
+            seriesWriter->SetFileNames(movingNameGenerator->GetOutputFileNames());
 
             seriesWriter->SetMetaDataDictionaryArray(
                     movingImageReader->GetMetaDataDictionaryArray());
@@ -449,8 +451,8 @@ int main(int argc, char **argv) {
                 std::cerr << excp << std::endl;
                 return EXIT_FAILURE;
             }
-        }
-    }
+      //  }
+   // }
     /**
     *
     * VTK
