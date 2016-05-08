@@ -434,7 +434,7 @@ int main(int argc, char **argv) {
             seriesWriter->SetInput(warper->GetOutput());
             seriesWriter->SetImageIO(movingDicomIO);
 
-            NamesGeneratorType::Pointer outputNameGenerator = NamesGeneratorType::New();
+            NamesGeneratorType::Pointer outputNamesGenerator = NamesGeneratorType::New();
             outputNamesGenerator->SetOutputDirectory(outputDirectory);
             seriesWriter->SetFileNames(outputNamesGenerator->GetOutputFileNames());
 
