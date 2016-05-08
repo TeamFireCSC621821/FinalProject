@@ -156,6 +156,14 @@ public:
 
     }
 
+    int getMinSlice(){
+        return _MinSlice;
+    }
+
+    int getMaxSlice(){
+        return _MaxSlice;
+    }
+
 
     void SetMapper1(vtkImageMapper* imageMapper){
         _ImageMapperLeft = imageMapper;
@@ -202,9 +210,10 @@ protected:
 
             _ImageMapperRight2->SetZSlice(_Slice);
             _ImageRendererRight2->Render();
-            _RenderWindow->Render();
+
             std::string msg = StatusMessage::Format(_Slice, _MaxSlice);
-            //_StatusMapper->SetInput(msg.c_str());
+            _StatusMapper->SetInput(msg.c_str());
+            _RenderWindow->Render();
             //_ImageViewer->Render();
             //_ImageMapperLeft->Render();
             //_ImageMapperRight->Render();
@@ -222,9 +231,10 @@ protected:
             _ImageMapperRight2->SetZSlice(_Slice);
             _ImageRendererRight2->Render();
 
+
+            std::string msg = StatusMessage::Format(_Slice, _MaxSlice);
+            _StatusMapper->SetInput(msg.c_str());
             _RenderWindow->Render();
-            //std::string msg = StatusMessage::Format(_Slice, _MaxSlice);
-            //_StatusMapper->SetInput(msg.c_str());
             //_ImageViewer->Render();
         }
     }
@@ -278,92 +288,9 @@ vtkStandardNewMacro( CustomInteractor);
 
 
 int main(){
+
     ui  = new UI();
     ui->setProcessFunction(&process);
-/*
-    int widgetHeight = 25;
-    int widgetWidth = 400;
-    int leftMargin = 25;
-    int topOffset = 25;
-    int ySpacing = 55;
-    int yOffsets[12];
-    for (int i = 0; i < 12; i++){
-        yOffsets[i] = topOffset + (i*ySpacing);
-    }
-
-    Fl_Window* win= new Fl_Window( 450,700, "SEGMENTATION PROCESSOR" );
-    win->begin();
-
-    directoryChooser = new Fl_Button( leftMargin, yOffsets[0], widgetWidth,widgetHeight, "Choose Directory" );
-
-    inputSeries = new Fl_Justify_Input(leftMargin ,yOffsets[1], widgetWidth , widgetHeight, "Input Series");
-    inputSeries->justify(FL_ALIGN_CENTER);
-
-    outputFile = new Fl_Justify_Input(leftMargin ,yOffsets[2], widgetWidth , widgetHeight, "Output File");
-    outputFile->justify(FL_ALIGN_CENTER);
-
-    iterationsSlider = new SliderInput(leftMargin, yOffsets[3] ,widgetWidth,widgetHeight, "Iterations");
-    iterationsSlider->bounds(1,10);       // set min/max for slider
-    iterationsSlider->value(2);           // set initial value
-
-
-    timeStepSlider = new SliderFloatInput(leftMargin,yOffsets[4],widgetWidth,widgetHeight, "TimeStep");
-    timeStepSlider->bounds(0.0f ,0.25f);       // set min/max for slider
-    timeStepSlider->value(0.01f);           // set initial value
-
-
-    conductanceSlider = new SliderFloatInput(leftMargin,yOffsets[5],widgetWidth,widgetHeight, "Conductance Parameter");
-    conductanceSlider->bounds(0.0f ,0.5f);       // set min/max for slider
-    conductanceSlider->value(0.3f);           // set initial value
-
-
-
-    thresholdSlider = new SliderInput(leftMargin,yOffsets[6],widgetWidth,widgetHeight, "Threshold");
-    thresholdSlider->bounds(0,500);       // set min/max for slider
-    thresholdSlider->value(250);           // set initial value
-
-
-
-    radiusSlider = new SliderInput(leftMargin,yOffsets[7],widgetWidth,widgetHeight, "Closing Filter Radius");
-    radiusSlider->bounds(0,10);       // set min/max for slider
-    radiusSlider->value(4);           // set initial value
-
-    distanceSlider = new SliderInput(leftMargin,yOffsets[8],widgetWidth,widgetHeight, "Distance Threshold");
-    distanceSlider->bounds(0,30);       // set min/max for slider
-    distanceSlider->value(2);           // set initial value
-
-    minSlider = new SliderInput(leftMargin,yOffsets[9],widgetWidth,widgetHeight, "Min Size");
-    minSlider->bounds(1,1000);       // set min/max for slider
-    minSlider->value(100);           // set initial value
-
-    but = new Fl_Button( leftMargin, yOffsets[10], widgetWidth, widgetHeight, "PROCESS" );
-
-    progress = new Fl_Progress(leftMargin ,yOffsets[11], widgetWidth , widgetHeight);
-    progress->minimum(0);                      // set progress range to be 0.0 ~ 1.0
-    progress->maximum(1);
-    progress->color(0x88888800);               // background color
-    progress->selection_color(0x4444ff00);     // progress bar color
-    progress->labelcolor(FL_WHITE);            // percent text color
-
-
-
-    progress->value(0);
-    char percent[10];
-    sprintf(percent, "%d%%", 0);
-    progress->label(percent);              // update progress bar's label
-    Fl::check();
-
-    updateProgressBar(progress, 0.0f);
-
-
-
-    win->end();
-    directoryChooser->callback(( Fl_Callback* ) open_cb);
-    but -> callback( ( Fl_Callback* ) processCallback , &progress);
-    win->show();
-
-    deactivateSliders();
-    */
     return  Fl::run();
 
 }
@@ -389,16 +316,9 @@ void process() {
     typedef itk::GDCMSeriesFileNames NamesGeneratorType;
     NamesGeneratorType::Pointer nameGenerator = NamesGeneratorType::New();
 
-    //nameGenerator->SetUseSeriesDetails( true );
-    //nameGenerator->AddSeriesRestriction("0008|0021" );
+
     nameGenerator->SetDirectory(ui->getDirectory());
 
-/*
-    typedef float InputPixelType;
-    typedef float OutputPixelType;
-    typedef itk::Image< InputPixelType, Dimension > InputImageType;
-    typedef itk::Image< OutputPixelType, Dimension > OutputImageType;
-*/
 
 
 
@@ -853,8 +773,57 @@ void process() {
     customInteractorStyle->SetRenderer3(rendererRight2);
     customInteractorStyle->SetRenderWindow(renderWindow);
 
+    vtkSmartPointer<vtkTextProperty> sliceTextProp = vtkSmartPointer<vtkTextProperty>::New();
+    sliceTextProp->SetFontFamilyToCourier();
+    sliceTextProp->SetFontSize(30);
+    sliceTextProp->SetVerticalJustificationToBottom();
+    sliceTextProp->SetJustificationToLeft();
 
-    //customInteractorStyle->SetStatusMapper(sliceTextMapper);
+    vtkSmartPointer<vtkTextMapper> sliceTextMapper = vtkSmartPointer<vtkTextMapper>::New();
+    std::string msg = StatusMessage::Format(customInteractorStyle->getMinSlice(), customInteractorStyle->getMaxSlice());
+    sliceTextMapper->SetInput(msg.c_str());
+    sliceTextMapper->SetTextProperty(sliceTextProp);
+
+    vtkSmartPointer<vtkActor2D> sliceTextActor = vtkSmartPointer<vtkActor2D>::New();
+    sliceTextActor->SetMapper(sliceTextMapper);
+    sliceTextActor->SetPosition(15, 10);
+
+    // usage hint message
+    vtkSmartPointer<vtkTextProperty> usageTextProp = vtkSmartPointer<vtkTextProperty>::New();
+    usageTextProp->SetFontFamilyToCourier();
+    usageTextProp->SetFontSize(25);
+    usageTextProp->SetVerticalJustificationToTop();
+    usageTextProp->SetJustificationToLeft();
+
+    vtkSmartPointer<vtkTextMapper> usageTextMapper = vtkSmartPointer<vtkTextMapper>::New();
+    usageTextMapper->SetInput("Original Image Set");
+    usageTextMapper->SetTextProperty(usageTextProp);
+
+    vtkSmartPointer<vtkActor2D> usageTextActor = vtkSmartPointer<vtkActor2D>::New();
+    usageTextActor->SetMapper(usageTextMapper);
+    usageTextActor->GetPositionCoordinate()->SetCoordinateSystemToNormalizedDisplay();
+    usageTextActor->GetPositionCoordinate()->SetValue( 0.05, 0.95);
+
+    vtkSmartPointer<vtkTextMapper> usageTextMapperMid = vtkSmartPointer<vtkTextMapper>::New();
+    usageTextMapperMid->SetInput("Post Threshold Filter");
+    usageTextMapperMid->SetTextProperty(usageTextProp);
+
+    vtkSmartPointer<vtkActor2D> usageTextActorMid = vtkSmartPointer<vtkActor2D>::New();
+    usageTextActorMid->SetMapper(usageTextMapperMid);
+    usageTextActorMid->GetPositionCoordinate()->SetCoordinateSystemToNormalizedDisplay();
+    usageTextActorMid->GetPositionCoordinate()->SetValue( 0.35, 0.95);
+
+    vtkSmartPointer<vtkTextMapper> usageTextMapperRight = vtkSmartPointer<vtkTextMapper>::New();
+    usageTextMapperRight->SetInput("Post Component Separation");
+    usageTextMapperRight->SetTextProperty(usageTextProp);
+
+    vtkSmartPointer<vtkActor2D> usageTextActorRight = vtkSmartPointer<vtkActor2D>::New();
+    usageTextActorRight->SetMapper(usageTextMapperRight);
+    usageTextActorRight->GetPositionCoordinate()->SetCoordinateSystemToNormalizedDisplay();
+    usageTextActorRight->GetPositionCoordinate()->SetValue( 0.75, 0.95);
+
+
+    customInteractorStyle->SetStatusMapper(sliceTextMapper);
 
     rendererRight->GetActiveCamera()->ParallelProjectionOn();
     rendererRight2->GetActiveCamera()->ParallelProjectionOn();
@@ -873,15 +842,20 @@ void process() {
     imageActorRight2 ->SetMapper(imageMapperRight2);
     rendererRight2->AddActor2D(imageActorRight2);
 
+    rendererLeft->AddActor2D(sliceTextActor);
+    rendererLeft->AddActor2D(usageTextActor);
+
     rendererLeft->Render();
     rendererLeft->ResetCamera();
     rendererLeft->Render();
 
+    rendererRight->AddActor2D(usageTextActorMid);
     rendererRight->Render();
     rendererRight->ResetCamera();
     rendererRight->Render();
 
 
+    rendererRight2->AddActor2D(usageTextActorRight);
     rendererRight2->Render();
     rendererRight2->ResetCamera();
     rendererRight2->Render();

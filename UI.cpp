@@ -53,11 +53,11 @@ UI::UI(){
 
 
     radiusSlider = new SliderInput(leftMargin,yOffsets[7],widgetWidth,widgetHeight, "Closing Filter Radius");
-    radiusSlider->bounds(0,10);       // set min/max for slider
+    radiusSlider->bounds(1,10);       // set min/max for slider
     radiusSlider->value(4);           // set initial value
 
     distanceSlider = new SliderInput(leftMargin,yOffsets[8],widgetWidth,widgetHeight, "Distance Threshold");
-    distanceSlider->bounds(0,30);       // set min/max for slider
+    distanceSlider->bounds(1,30);       // set min/max for slider
     distanceSlider->value(2);           // set initial value
 
     minSlider = new SliderInput(leftMargin,yOffsets[9],widgetWidth,widgetHeight, "Min Size");
