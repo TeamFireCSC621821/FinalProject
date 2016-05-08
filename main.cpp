@@ -54,6 +54,7 @@
 #include <math.h>
 #include <sstream>
 #include <string>
+#include "UI.h"
 
 
 //For Edge Preserving Smoothing
@@ -84,6 +85,7 @@ double ymins2[3] = {0,0,0};
 double ymaxs2[3]= {1,1,1};
 
 
+
 const unsigned int      Dimension = 3;
 typedef float InputPixelType;
 typedef float  OutputPixelType;
@@ -96,29 +98,18 @@ void process();
 void updateProgressBar( Fl_Progress *progress , float percent);
 void open_cb(Fl_Widget*, void*);
 void updateOutputFile();
+void deactivateSliders();
 
 
 /**
  * Declare global widget pointers so they can talk to eachother without having to have a bunch of
  * pointers for arguments
  */
-class Fl_Justify_Input;
-class SliderInput;
-class SliderFloatInput;
 
-Fl_Justify_Input*  inputSeries;
-Fl_Justify_Input*  outputFile;
-SliderInput *iterationsSlider;
-SliderFloatInput *timeStepSlider;
-SliderFloatInput *conductanceSlider;
-SliderInput *thresholdSlider;
-SliderInput *radiusSlider;
-SliderInput *distanceSlider;
-SliderInput *minSlider;
-Fl_Progress *progress;
-Fl_Button* directoryChooser;
-Fl_Button* but;
-string directoryValue;
+
+
+UI* ui;
+
 
 // helper class to format slice status message
 class StatusMessage {
@@ -275,225 +266,10 @@ protected:
 };
 
 
-class SliderInput : public Fl_Group {
-    Fl_Int_Input *input;
-    Fl_Slider    *slider;
-
-    // CALLBACK HANDLERS
-    //    These 'attach' the input and slider's values together.
-    //
-    void Slider_CB2() {
-        static int recurse = 0;
-        if ( recurse ) {
-            return;
-        } else {
-            recurse = 1;
-            char s[80];
-            sprintf(s, "%d", (int)(slider->value() + .5));
-            // fprintf(stderr, "SPRINTF(%d) -> '%s'\n", (int)(slider->value()+.5), s);
-            input->value(s);          // pass slider's value to input
-            recurse = 0;
-
-        }
-    }
-
-    static void Slider_CB(Fl_Widget *w, void *data) {
-        ((SliderInput*)data)->Slider_CB2();
-
-    }
-
-    void Input_CB2() {
-        static int recurse = 0;
-        if ( recurse ) {
-            return;
-        } else {
-            recurse = 1;
-            int val = 0;
-            if ( sscanf(input->value(), "%d", &val) != 1 ) {
-                val = 0;
-            }
-            // fprintf(stderr, "SCANF('%s') -> %d\n", input->value(), val);
-            slider->value(val);         // pass input's value to slider
-            recurse = 0;
-
-
-        }
-    }
-    static void Input_CB(Fl_Widget *w, void *data) {
-
-
-        ((SliderInput*)data)->Input_CB2();
-    }
-
-public:
-    // CTOR
-    SliderInput(int x, int y, int w, int h, const char *l=0) : Fl_Group(x,y,w,h,l) {
-        int in_w = 40;
-        input  = new Fl_Int_Input(x, y, in_w, h);
-        input->callback(Input_CB, (void*)this);
-        input->when(FL_WHEN_ENTER_KEY|FL_WHEN_NOT_CHANGED);
-
-        slider = new Fl_Slider(x+in_w, y, w-in_w, h);
-        slider->type(1);
-        slider->callback(Slider_CB, (void*)this);
-
-        bounds(1, 10);     // some usable default
-        value(5);          // some usable default
-        end();             // close the group
-    }
-
-    // MINIMAL ACCESSORS --  Add your own as needed
-    int  value() const    { return((int)(slider->value() + 0.5)); }
-    void value(int val)   { slider->value(val); Slider_CB2(); }
-    void minumum(int val) { slider->minimum(val); }
-    int  minumum() const  { return((int)slider->minimum()); }
-    void maximum(int val) { slider->maximum(val); }
-    int  maximum() const  { return((int)slider->maximum()); }
-    void bounds(int low, int high) { slider->bounds(low, high); }
-};
-
-
-class SliderFloatInput : public Fl_Group {
-    Fl_Float_Input *input;
-    Fl_Slider    *slider;
-
-    // CALLBACK HANDLERS
-    //    These 'attach' the input and slider's values together.
-    //
-    void Slider_CB2() {
-        static int recurse = 0;
-        if ( recurse ) {
-            return;
-        } else {
-            recurse = 1;
-            char s[80];
-            sprintf(s, "%.2f", (float)(slider->value() ));
-            // fprintf(stderr, "SPRINTF(%d) -> '%s'\n", (int)(slider->value()+.5), s);
-            input->value(s);          // pass slider's value to input
-            recurse = 0;
-        }
-    }
-
-    static void Slider_CB(Fl_Widget *w, void *data) {
 
 
 
-        ((SliderFloatInput*)data)->Slider_CB2();
-    }
 
-    void Input_CB2() {
-        static int recurse = 0;
-        if ( recurse ) {
-            return;
-        } else {
-            recurse = 1;
-            int val = 0;
-            if ( sscanf(input->value(), "%.2f", &val) != 1 ) {
-                val = 0;
-            }
-            // fprintf(stderr, "SCANF('%s') -> %d\n", input->value(), val);
-            slider->value(val);         // pass input's value to slider
-
-
-            recurse = 0;
-        }
-    }
-    static void Input_CB(Fl_Widget *w, void *data) {
-
-
-
-        ((SliderFloatInput*)data)->Input_CB2();
-    }
-
-public:
-    // CTOR
-    SliderFloatInput(int x, int y, int w, int h, const char *l=0) : Fl_Group(x,y,w,h,l) {
-        int in_w = 40;
-        input  = new Fl_Float_Input(x, y, in_w, h);
-        input->callback(Input_CB, (void*)this);
-        input->when(FL_WHEN_ENTER_KEY|FL_WHEN_NOT_CHANGED);
-
-        slider = new Fl_Slider(x+in_w, y, w-in_w, h);
-        slider->type(1);
-        slider->callback(Slider_CB, (void*)this);
-
-        bounds(1, 10);     // some usable default
-        value(5);          // some usable default
-        end();             // close the group
-    }
-
-    // MINIMAL ACCESSORS --  Add your own as needed
-    float  value() const    { return((float)(slider->value())); }
-    void value(float val)   { slider->value(val); Slider_CB2(); }
-    void minumum(float val) { slider->minimum(val); }
-    int  minumum() const  { return((float)slider->minimum()); }
-    void maximum(float val) { slider->maximum(val); }
-    int  maximum() const  { return((int)slider->maximum()); }
-    void bounds(float low, float high) { slider->bounds(low, high); }
-};
-
-class Fl_Justify_Input : public Fl_Group {
-    Fl_Input *inp;
-    Fl_Box   *box;
-public:
-    // Ctor
-    Fl_Justify_Input(int X,int Y,int W,int H,const char *L=0):Fl_Group(X,Y,W,H,L) {
-        Fl_Group::box(FL_NO_BOX);
-        box = new Fl_Box(X,Y,W,H);
-        box->color(FL_WHITE);
-        box->box(FL_DOWN_BOX);
-        inp = new Fl_Input(X,Y,W,H);
-        inp->hide();
-        inp->color(FL_WHITE);
-        inp->readonly(1);
-        end();
-    }
-    // Set text justification. Expects one of:
-    // FL_ALIGN_LEFT, FL_ALIGN_CENTER, FL_ALIGN_RIGHT.
-    //
-    void justify(Fl_Align val) {
-        box->align(val|FL_ALIGN_INSIDE);
-    }
-    // Returns text justification
-    Fl_Align justify() const {
-        return box->align();
-    }
-    // Sets the text value
-    void value(const char *val) {
-        box->copy_label(val);
-        inp->value(val);
-    }
-    // Gets the text value
-    const char *value() const {
-        return inp->value();
-    }
-    int handle(int e) {
-        switch (e) {
-            case FL_PUSH:
-            case FL_FOCUS:
-                if (!inp->visible()) {
-                    // Make input widget 'appear' in place of the box
-                    box->hide();
-                    inp->show();
-                    inp->value(box->label());
-                    redraw();
-                }
-                break;
-            case FL_UNFOCUS:
-                if (inp->visible()) {
-                    // Replace input widget with justified box
-                    box->show();
-                    inp->hide();
-                    box->label(inp->value());
-                    redraw();
-                }
-                break;
-            default:
-                break;
-        }
-        return(Fl_Group::handle(e));
-    }
-};
 
 
 
@@ -502,7 +278,9 @@ vtkStandardNewMacro( CustomInteractor);
 
 
 int main(){
-    
+    ui  = new UI();
+    ui->setProcessFunction(&process);
+/*
     int widgetHeight = 25;
     int widgetWidth = 400;
     int leftMargin = 25;
@@ -528,18 +306,22 @@ int main(){
     iterationsSlider->bounds(1,10);       // set min/max for slider
     iterationsSlider->value(2);           // set initial value
 
+
     timeStepSlider = new SliderFloatInput(leftMargin,yOffsets[4],widgetWidth,widgetHeight, "TimeStep");
     timeStepSlider->bounds(0.0f ,0.25f);       // set min/max for slider
     timeStepSlider->value(0.01f);           // set initial value
+
 
     conductanceSlider = new SliderFloatInput(leftMargin,yOffsets[5],widgetWidth,widgetHeight, "Conductance Parameter");
     conductanceSlider->bounds(0.0f ,0.5f);       // set min/max for slider
     conductanceSlider->value(0.3f);           // set initial value
 
 
+
     thresholdSlider = new SliderInput(leftMargin,yOffsets[6],widgetWidth,widgetHeight, "Threshold");
     thresholdSlider->bounds(0,500);       // set min/max for slider
     thresholdSlider->value(250);           // set initial value
+
 
 
     radiusSlider = new SliderInput(leftMargin,yOffsets[7],widgetWidth,widgetHeight, "Closing Filter Radius");
@@ -564,106 +346,34 @@ int main(){
     progress->labelcolor(FL_WHITE);            // percent text color
 
 
-/*
+
     progress->value(0);
     char percent[10];
     sprintf(percent, "%d%%", 0);
     progress->label(percent);              // update progress bar's label
     Fl::check();
-    */
+
     updateProgressBar(progress, 0.0f);
+
 
 
     win->end();
     directoryChooser->callback(( Fl_Callback* ) open_cb);
     but -> callback( ( Fl_Callback* ) processCallback , &progress);
     win->show();
-    cout << "stuff" << endl;
+
+    deactivateSliders();
+    */
     return  Fl::run();
-}
-
-
-void updateProgressBar( Fl_Progress *progress , float percent){
-    progress->value(percent);
-    char percentLabel[10];
-    sprintf(percentLabel, "%d%%", percent);
-    progress->label(percentLabel);              // update progress bar's label
-    Fl::check();
-}
-
-
-void processCallback( Fl_Widget* button , void *data ) {
-    Fl_Progress *progress = (Fl_Progress*)data;
-    button->deactivate();
-    directoryChooser->deactivate();
-    Fl::check();
-
-    //updateProgressBar(progress , 0.8f);
-
-
-    process();
-
-    button->activate();
-    directoryChooser->activate();
-    Fl::check();
-}
-
-void quit_callback(Fl_Widget*, void*) {
-    exit(0);
-}
-
-void updateOutputFile(){
-    char buffer [50];
-
-    sprintf (buffer, "%soutput-%d-%.2f-%.2f-%d-%d-%d.txt", directoryValue.c_str() ,
-             iterationsSlider->value(), timeStepSlider->value(), conductanceSlider->value(),
-             thresholdSlider->value(), radiusSlider->value(), distanceSlider->value(), minSlider->value());
-
-    //outputFile->value(buffer);
-    cout << outputFile << endl;
-}
-
-void open_cb(Fl_Widget*, void*) {
-
-    // Create the file chooser, and show it
-    Fl_File_Chooser chooser(".",                        // directory
-                            "*",                        // filter
-                            Fl_File_Chooser::DIRECTORY,     // chooser type
-                            "Choose DICOM Series");        // title
-    chooser.show();
-
-    // Block until user picks something.
-    //     (The other way to do this is to use a callback())
-    //
-    while(chooser.shown())
-    { Fl::wait(); }
-
-    // User hit cancel?
-    if ( chooser.value() == NULL )
-    { fprintf(stderr, "(User hit 'Cancel')\n"); return; }
-
-    //update the input series widget
-    inputSeries->value(chooser.value());
-
-
-    string directoryTemp(chooser.value());
-    if(directoryTemp.back() != '/' ){
-        directoryTemp+= '/';
-    }
-
-    directoryValue = directoryTemp;
-
-    char buffer [50];
-    sprintf (buffer, "%soutput-%d-%.2f-%.2f-%d-%d-%d.txt", directoryValue.c_str() ,
-             iterationsSlider->value(), timeStepSlider->value(), conductanceSlider->value(),
-             thresholdSlider->value(), radiusSlider->value(), distanceSlider->value(), minSlider->value());
-    outputFile->value(buffer);
-
 
 }
+
+
+
+
+
 
 void process() {
-    cout << "time slider:" << timeStepSlider->value() << endl;
 
     std::vector<vtkSmartPointer<vtkRenderWindowInteractor> > interactors;
 
@@ -681,7 +391,7 @@ void process() {
 
     //nameGenerator->SetUseSeriesDetails( true );
     //nameGenerator->AddSeriesRestriction("0008|0021" );
-    nameGenerator->SetDirectory(inputSeries->value());
+    nameGenerator->SetDirectory(ui->getDirectory());
 
 /*
     typedef float InputPixelType;
@@ -720,7 +430,7 @@ void process() {
         std::cout << ex << std::endl;
     }
 
-
+    ui->updateProgressBar(0.1f);
 
 
 
@@ -735,9 +445,9 @@ void process() {
     FilterType::Pointer filter = FilterType::New();
 
     filter->SetInput( reader->GetOutput() );
-    filter->SetNumberOfIterations( iterationsSlider->value() );
-    filter->SetTimeStep( timeStepSlider->value() );
-    filter->SetConductanceParameter( conductanceSlider->value() );
+    filter->SetNumberOfIterations( ui->getIterations() );
+    filter->SetTimeStep( ui->getTimeStep() );
+    filter->SetConductanceParameter( ui->getConductance() );
 
 
 
@@ -750,6 +460,8 @@ void process() {
         std::cerr << "Error: " << error << std::endl;
         //return EXIT_FAILURE;
     }
+
+    ui->updateProgressBar(0.2f);
 
 
     /**
@@ -766,9 +478,10 @@ void process() {
     BinaryThresholdImageFilterType::Pointer binaryThresholdFilter
             = BinaryThresholdImageFilterType::New();
     binaryThresholdFilter->SetInput(filter->GetOutput());
-    binaryThresholdFilter->SetLowerThreshold(thresholdSlider->value());
+    binaryThresholdFilter->SetLowerThreshold(ui->getThreshold());
     binaryThresholdFilter->Update();
 
+    ui->updateProgressBar(0.3f);
 
     typedef itk::ThresholdImageFilter <InputImageType>
             ThresholdImageFilterType;
@@ -777,9 +490,11 @@ void process() {
             = ThresholdImageFilterType::New();
     thresholdFilter->SetInput(filter->GetOutput());
     //thresholdFilter->ThresholdOutside(lowerThreshold, upperThreshold);
-    thresholdFilter->SetLower(thresholdSlider->value());
+    thresholdFilter->SetLower(ui->getThreshold());
     thresholdFilter->SetOutsideValue(0);
     thresholdFilter->Update();
+
+    ui->updateProgressBar(0.4f);
 
     /**
     *
@@ -790,7 +505,7 @@ void process() {
     typedef itk::BinaryBallStructuringElement<InputImageType::PixelType, InputImageType::ImageDimension>
             StructuringElementType;
     StructuringElementType structuringElement;
-    structuringElement.SetRadius(4);
+    structuringElement.SetRadius(ui->getRadius());
     structuringElement.CreateStructuringElement();
 
     typedef itk::BinaryMorphologicalClosingImageFilter <InputImageType, InputImageType, StructuringElementType>
@@ -802,6 +517,7 @@ void process() {
     closingFilter->Update();
 
 
+    ui->updateProgressBar(0.5f);
 
     /**
      *
@@ -821,14 +537,15 @@ void process() {
     ConnectedComponentImageFilterType::Pointer connected =
             ConnectedComponentImageFilterType::New ();
     connected->SetInput(closingFilter->GetOutput());
-    connected->SetDistanceThreshold(distanceSlider->value());
+    connected->SetDistanceThreshold(ui->getDistance());
 
+    ui->updateProgressBar(0.6f);
 
     typedef itk::RelabelComponentImageFilter <LabelImageType, LabelImageType >
             RelabelFilterType;
     RelabelFilterType::Pointer relabel =
             RelabelFilterType::New();
-    RelabelFilterType::ObjectSizeType minSize = minSlider->value();
+    RelabelFilterType::ObjectSizeType minSize = ui->getMin();
 
     relabel->SetInput(connected->GetOutput());
     relabel->SetMinimumObjectSize(minSize);
@@ -838,12 +555,14 @@ void process() {
     std::cout << "Number of labels: "
     << labelCount << endl;
 
-    ofstream out(outputFile->value());
+    ofstream out(ui->getOutputFile());
     for(int n = 0; n < labelCount; n++){
         out  << n << "," << relabel->GetSizeOfObjectsInPixels()[n] << "," <<
                 relabel->GetSizeOfObjectsInPhysicalUnits()[n] << endl;
     }
     out.close();
+
+    ui->updateProgressBar(0.7f);
 
     /**
     *
@@ -858,6 +577,8 @@ void process() {
     pixel.SetBlue(255);
     pixel.SetGreen(255);
 
+    ui->updateProgressBar(0.8f);
+
     typedef itk::LabelToRGBImageFilter<LabelImageType, RGBImageType> RGBFilterType;
     RGBFilterType::Pointer rgbFilter =
             RGBFilterType::New();
@@ -865,6 +586,7 @@ void process() {
     rgbFilter->SetBackgroundColor(pixel);
     rgbFilter->Update();
 
+    ui->updateProgressBar(0.9f);
 
 
     /**
@@ -1165,7 +887,7 @@ void process() {
     rendererRight2->Render();
 
 
-
+    ui->updateProgressBar(1.0f);
     interactors[1]->Start();
 
 

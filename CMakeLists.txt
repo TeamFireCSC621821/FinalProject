@@ -25,7 +25,7 @@ include(${VTK_USE_FILE})
 FIND_PACKAGE(OpenGL REQUIRED)
 
 
-set(SOURCE_FILES main.cpp)
+set(SOURCE_FILES main.cpp UI.cpp Fl_Justify_Input.cpp SliderInput.cpp SliderFloatInput.cpp)
 add_executable(FinalProjectBiomed ${SOURCE_FILES})
 
 target_link_libraries(FinalProjectBiomed ${ITK_LIBRARIES} ${VTK_LIBRARIES} ${FLTK_LIBRARIES} ${OPENGL_LIBRARIES} )
