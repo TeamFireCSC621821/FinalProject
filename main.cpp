@@ -239,15 +239,12 @@ protected:
 
 
 
-
 vtkStandardNewMacro( CustomInteractor);
 SmoothingFilterType::Pointer Smoothing(FixedImageReaderType::Pointer);
-//SmoothingFilterType::Pointer Smoothing(MovingImageReaderType::Pointer);
+
 
 int main(int argc, char **argv) {
     std::vector<vtkSmartPointer<vtkRenderWindowInteractor> > interactors;
-
-
 
     //This is for fixedImage loading
     //typedef itk::Image< InputPixelType, Dimension > ImageType;
@@ -427,25 +424,24 @@ int main(int argc, char **argv) {
     // draws into the render window, the interactor enables mouse- and
     // keyboard-based interaction with the scene.
 
-    vtkSmartPointer<vtkRenderer> ren = vtkSmartPointer<vtkRenderer>::New();
-
-
-    vtkSmartPointer<vtkRenderer> rendererVolOriginal = vtkSmartPointer<vtkRenderer>::New();
-    vtkSmartPointer<vtkRenderer> rendererBinaryOutput = vtkSmartPointer<vtkRenderer>::New();
-
-
-
-    renWin->AddRenderer(rendererVolOriginal);
-    rendererVolOriginal->SetViewport(xmins[2],ymins[2],xmaxs[2],ymaxs[2]);
-
-    renWin->AddRenderer(ren);
-    ren->SetViewport(xmins[3],ymins[3],xmaxs[3],ymaxs[3]);
-
-    renWin->AddRenderer(rendererBinaryOutput);
-    rendererBinaryOutput->SetViewport(xmins[1],ymins[1],xmaxs[1],ymaxs[1]);
+    vtkSmartPointer<vtkRenderer> rendererDifference = vtkSmartPointer<vtkRenderer>::New();
+    vtkSmartPointer<vtkRenderer> rendererCheckerboard = vtkSmartPointer<vtkRenderer>::New();
+    vtkSmartPointer<vtkRenderer> rendererFixedImage = vtkSmartPointer<vtkRenderer>::New();
+    vtkSmartPointer<vtkRenderer> rendererMovingImage = vtkSmartPointer<vtkRenderer>::New();
 
 
 
+    renWin->AddRenderer(rendererFixedImage);
+    rendererFixedImage->SetViewport(xmins[2],ymins[2],xmaxs[2],ymaxs[2]);
+
+    renWin->AddRenderer(rendererCheckerboard);
+    rendererCheckerboard->SetViewport(xmins[3],ymins[3],xmaxs[3],ymaxs[3]);
+
+    renWin->AddRenderer(rendererMovingImage);
+    rendererMovingImage->SetViewport(xmins[1],ymins[1],xmaxs[1],ymaxs[1]);
+
+    renWin->AddRenderer(rendererDifference);
+    rendererCheckerboard->setViewport(xmins[0],ymins[0],xmaxs[0],ymaxs[0]);
 
 
     vtkSmartPointer<vtkFixedPointVolumeRayCastMapper> volumeMapperDifference =
@@ -514,43 +510,49 @@ int main(int argc, char **argv) {
        volumeProperty->SetSpecular(0.2);
        // The vtkVolume is a vtkProp3D (like a vtkActor) and controls the position
        // and orientation of the volume in world coordinates.
-       vtkSmartPointer<vtkVolume> volume =
-        vtkSmartPointer<vtkVolume>::New();
-       volume->SetMapper(volumeMapper);
-       volume->SetProperty(volumeProperty);
+    vtkSmartPointer<vtkVolume> volumeFixed =
+            vtkSmartPointer<vtkVolume>::New();
+    volumeFixed->SetMapper(volumeMapperFixed);
+    volumeFixed->SetProperty(volumeProperty);
 
+    vtkSmartPointer<vtkVolume> volumeMoving =
+            vtkSmartPointer<vtkVolume>::New();
+    volumeMoving->SetMapper(volumeMapperMoving);
+    volumeMoving->SetProperty(volumeProperty);
 
     vtkSmartPointer<vtkVolume> volumeChecker =
             vtkSmartPointer<vtkVolume>::New();
     volumeChecker->SetMapper(volumeMapperChecker);
     volumeChecker->SetProperty(volumeProperty);
 
-
-    vtkSmartPointer<vtkVolume> volumeFixed =
+    vtkSmartPointer<vtkVolume> volumeDifference =
             vtkSmartPointer<vtkVolume>::New();
-    volumeFixed->SetMapper(volumeMapperFixed);
-    volumeFixed->SetProperty(volumeProperty);
-
-       // Finally, add the volume to the renderer
-     ren->SetBackground(1,1,1);
-     ren->AddViewProp(volume);
-     ren->ResetCamera();
+    volumeDifference->SetMapper(volumeMapperDifference);
+    volumeDifference->SetProperty(volumeProperty);
 
 
 
-    rendererVolOriginal ->SetBackground(1,1,1);
-    rendererVolOriginal ->AddViewProp(volumeChecker);
-    rendererVolOriginal ->ResetCamera();
+    // Finally, add the volume to the renderer
+    rendererCheckerboard->SetBackground(1,1,1);
+    rendererCheckerboard->AddViewProp(volumeChecker);
+    rendererCheckerboard->ResetCamera();
 
-    rendererBinaryOutput ->SetBackground(1,1,1);
-    rendererBinaryOutput ->AddViewProp(volumeFixed);
-    rendererBinaryOutput ->ResetCamera();
+    rendererDifference->SetBackground(1,1,1);
+    rendererDifference->AddViewProp(volumeDifference);
+    rendererDifference->ResetCamera();
+
+    rendererFixedImage ->SetBackground(1,1,1);
+    rendererFixedImage ->AddViewProp(volumeChecker);
+    rendererFixedImage ->ResetCamera();
+
+    rendererMovingImage ->SetBackground(1,1,1);
+    rendererMovingImage ->AddViewProp(volumeFixed);
+    rendererMovingImage ->ResetCamera();
 
 
-    rendererVolOriginal->SetActiveCamera(rendererBinaryOutput->GetActiveCamera());
-    ren->SetActiveCamera(rendererVolOriginal->GetActiveCamera());
-
-
+    rendererFixedImage->SetActiveCamera(rendererMovingImage->GetActiveCamera());
+    rendererCheckerboard->SetActiveCamera(rendererFixedImage->GetActiveCamera());
+    rendererDifference->setActiveCamera(rendererCheckerboard->GetActiveCamera());
 
 
     // Increase the size of the render window
@@ -567,15 +569,7 @@ int main(int argc, char **argv) {
     *
     */
 
-
-    ImageConnectorType::Pointer originalSliceConnector = ImageConnectorType::New();
-    originalSliceConnector->SetInput( fixedFilter->GetOutput() );
-    originalSliceConnector->Update();
-
     int *dimensions = differenceConnector->GetOutput()->GetDimensions();
-
-
-
 
     vtkSmartPointer<vtkRenderWindow> renderWindow =
             vtkSmartPointer<vtkRenderWindow>::New();
@@ -644,10 +638,7 @@ int main(int argc, char **argv) {
     rendererRight->Render();
 
 
-
     interactors[1]->Start();
-
-
 
 
     return 0;
