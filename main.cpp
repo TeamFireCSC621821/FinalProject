@@ -516,9 +516,10 @@ void process() {
     typedef itk::RGBPixel<unsigned char>           RGBPixelType;
     typedef itk::Image<RGBPixelType, Dimension>    RGBImageType;
     RGBPixelType pixel;
-    pixel.SetRed(255);
-    pixel.SetBlue(255);
-    pixel.SetGreen(255);
+    pixel.SetRed(254);
+    pixel.SetBlue(254);
+    pixel.SetGreen(254);
+
 
 
 
@@ -526,7 +527,7 @@ void process() {
     RGBFilterType::Pointer rgbFilter =
             RGBFilterType::New();
     rgbFilter->SetInput( relabel->GetOutput() );
-    //rgbFilter->SetBackgroundValue(255);
+    //rgbFilter->SetBackgroundValue(0);
     rgbFilter->SetBackgroundColor(pixel);
 
     rgbFilter->Update();
