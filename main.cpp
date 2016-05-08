@@ -259,18 +259,23 @@ int main(int argc, char **argv) {
 
     FixedImageReaderType::Pointer fixedImageReader = FixedImageReaderType::New();
     MovingImageReaderType::Pointer movingImageReader = MovingImageReaderType::New();
+    RegisteredImageReaderType::Pointer registeredImageReader = registeredImageReaderType::New();
 
     fixedImageReader->SetImageIO(fixedDicomIO);
     movingImageReader->SetImageIO(movingDicomIO);
+    registeredImageReader->SetImageIO(registeredDicomIO);
+
     //reader->SetImageIO( dicomIO );
     typedef itk::GDCMSeriesFileNames NamesGeneratorType;
     NamesGeneratorType::Pointer fixedNameGenerator = NamesGeneratorType::New();
     NamesGeneratorType::Pointer movingNameGenerator = NamesGeneratorType::New();
+    NamesGeneratorType::Pointer registeredNameGenerator = NamesGeneratorType::New();
 
     //nameGenerator->SetUseSeriesDetails( true );
     //nameGenerator->AddSeriesRestriction("0008|0021" );
     fixedNameGenerator->SetDirectory( "/Test1");
     movingNameGenerator->SetDirectory( "/Test2");
+    registeredNameGenerator->SetDirectory("?????");
 
 
     typedef std::vector< std::string >    SeriesIdContainer;
@@ -332,51 +337,83 @@ int main(int argc, char **argv) {
     }
 
 
-            /*
-             * CheckBoard
-             *
-             */
+    // registered image
+    const SeriesIdContainer & registeredSeriesUID = registeredNameGenerator->GetSeriesUIDs();
+    std::cout << registeredSeriesUID.size() << std::endl;
+    SeriesIdContainer::const_iterator registeredSeriesItr = registeredSeriesUID.begin();
+    SeriesIdContainer::const_iterator registeredSeriesEnd = registeredSeriesUID.end();
+    while( registeredSeriesItr != registeredSeriesEnd )
+    {
+        std::cout << registeredSeriesItr->c_str() << std::endl;
+        registeredSeriesItr++;
+    }
+    std::string registeredSeriesIdentifier;
+    registeredSeriesIdentifier = registeredSeriesUID.begin()->c_str();
+    std::cout << registeredSeriesIdentifier.c_str() << std::endl;
+
+    FileNamesContainer registeredFileNames;
+    registeredFileNames = registeredNameGenerator->GetFileNames( registeredSeriesIdentifier );
+
+    registeredImageReader->SetFileNames( registeredFileNames );
+    try
+    {
+        registeredImageReader->Update();
+    }
+    catch (itk::ExceptionObject &ex)
+    {
+        std::cout << ex << std::endl;
+    }
+
+
+    /*
+    * CheckerBoard
+    *
+    */
 
     CheckerBoardFilterType::Pointer checkerBoardFilter = CheckerBoardFilterType::New();
-    checkerBoardFilter->SetInput1(fixedFilter->GetOutput());
-    checkerBoardFilter->SetInput2(warper->GetOutput());
+    checkerBoardFilter->SetInput1(fixedImageReader->GetOutput());
+    checkerBoardFilter->SetInput2(registeredImageReader->GetOutput());
     checkerBoardFilter->Update();
 
-            /*
-             * File output
-             *
-             */
+    /*
+     * Difference Image
+     *
+     */
+
+    typedef itk::AbsoluteValueDifferenceImageFilter <FixedImageType, FixedImageType ,
+            FloatImageType>
+            AbsoluteValueDifferenceImageFilterType;
+    AbsoluteValueDifferenceImageFilterType::Pointer absoluteValueDifferenceFilter
+            = AbsoluteValueDifferenceImageFilterType::New ();
+    absoluteValueDifferenceFilter->SetInput1(fixedImageReader->GetOutput());
+    absoluteValueDifferenceFilter->SetInput2(registeredImageReader->GetOutput());
+    absoluteValueDifferenceFilter->Update();
+
     /**
     *
     * VTK
     *
     */
 
-    //typedef itk::ImageToVTKImageFilter < RGBImageType > ConnectorType;
-    typedef itk::ImageToVTKImageFilter < MovingImageType > warpConnectorType;
-    warpConnectorType::Pointer rawConnector = warpConnectorType::New();
-    //connector->SetInput( rgbFilter->GetOutput() );
-    rawConnector->SetInput( fixedFilter->GetOutput() );
-    //connector->SetInput( filter->GetOutput() );
-    //connector->SetInput( reader->GetOutput() );
-    rawConnector->Update();
+    std::vector<vtkSmartPointer<vtkRenderWindowInteractor> > interactors;
 
+    typedef itk::ImageToVTKImageFilter < MovingImageType > ImageConnectorType;
 
+    ImageConnectorType::Pointer checkerConnector = ImageConnectorType::New();
+    checkerConnector->SetInput( checkerBoardFilter->GetOutput() );
+    checkerConnector->Update();
 
-    warpConnectorType::Pointer movingImageConnector = warpConnectorType::New();
-    movingImageConnector->SetInput( movingFilter->GetOutput() );
+    ImageConnectorType::Pointer movingImageConnector = ImageConnectorType::New();
+    movingImageConnector->SetInput( movingImageReader->GetOutput() );
     movingImageConnector->Update();
 
+    ImageConnectorType::Pointer differenceConnector = ImageConnectorType::New();
+    differenceConnector->SetInput( absoluteValueDifferenceFilter->GetOutput() );
+    differenceConnector->Update();
 
-
-
-    //typedef itk::ImageToVTKImageFilter < MovingImageType > warpConnectorType;
-    warpConnectorType::Pointer connector = warpConnectorType::New();
-    //connector->SetInput( rgbFilter->GetOutput() );
-    connector->SetInput( checkerBoardFilter->GetOutput() );
-    //connector->SetInput( filter->GetOutput() );
-    //connector->SetInput( reader->GetOutput() );
-    connector->Update();
+    ImageConnectorType::Pointer fixedConnector = ImageConnectorType::New();
+    fixedConnector->SetInput( fixedImageReader->GetOutput() );
+    fixedConnector->Update();
 
     vtkSmartPointer<vtkRenderWindow> renWin = vtkSmartPointer<vtkRenderWindow>::New();
     vtkSmartPointer<vtkRenderWindowInteractor> iren = vtkSmartPointer<vtkRenderWindowInteractor>::New();
@@ -411,18 +448,21 @@ int main(int argc, char **argv) {
 
 
 
-    vtkSmartPointer<vtkFixedPointVolumeRayCastMapper> volumeMapper =
+    vtkSmartPointer<vtkFixedPointVolumeRayCastMapper> volumeMapperDifference =
             vtkSmartPointer<vtkFixedPointVolumeRayCastMapper>::New();
-    volumeMapper->SetInputData(connector->GetOutput());
+    volumeMapperDifference->SetInputData(differenceConnector->GetOutput());
 
-    vtkSmartPointer<vtkFixedPointVolumeRayCastMapper> volumeMapperOriginal =
+    vtkSmartPointer<vtkFixedPointVolumeRayCastMapper> volumeMapperChecker =
             vtkSmartPointer<vtkFixedPointVolumeRayCastMapper>::New();
-    volumeMapperOriginal->SetInputData(rawConnector->GetOutput());
+    volumeMapperChecker->SetInputData(checkerConnector->GetOutput());
 
-    vtkSmartPointer<vtkFixedPointVolumeRayCastMapper> volumeMapperBinary =
+    vtkSmartPointer<vtkFixedPointVolumeRayCastMapper> volumeMapperMoving =
             vtkSmartPointer<vtkFixedPointVolumeRayCastMapper>::New();
-    volumeMapperBinary->SetInputData(movingImageConnector->GetOutput());
+    volumeMapperMoving->SetInputData(movingImageConnector->GetOutput());
 
+    vtkSmartPointer<vtkFixedPointVolumeRayCastMapper> volumeMapperFixed =
+            vtkSmartPointer<vtkFixedPointVolumeRayCastMapper>::New();
+    volumeMapperFixed->SetInputData(fixedImageConnector->GetOutput());
 
     vtkSmartPointer<vtkColorTransferFunction>volumeColor =
          vtkSmartPointer<vtkColorTransferFunction>::New();
@@ -480,16 +520,16 @@ int main(int argc, char **argv) {
        volume->SetProperty(volumeProperty);
 
 
-    vtkSmartPointer<vtkVolume> volumeOriginal =
+    vtkSmartPointer<vtkVolume> volumeChecker =
             vtkSmartPointer<vtkVolume>::New();
-    volumeOriginal->SetMapper(volumeMapperOriginal);
-    volumeOriginal->SetProperty(volumeProperty);
+    volumeChecker->SetMapper(volumeMapperChecker);
+    volumeChecker->SetProperty(volumeProperty);
 
 
-    vtkSmartPointer<vtkVolume> volumeBinary =
+    vtkSmartPointer<vtkVolume> volumeFixed =
             vtkSmartPointer<vtkVolume>::New();
-    volumeBinary->SetMapper(volumeMapperBinary);
-    volumeBinary->SetProperty(volumeProperty);
+    volumeFixed->SetMapper(volumeMapperFixed);
+    volumeFixed->SetProperty(volumeProperty);
 
        // Finally, add the volume to the renderer
      ren->SetBackground(1,1,1);
@@ -499,11 +539,11 @@ int main(int argc, char **argv) {
 
 
     rendererVolOriginal ->SetBackground(1,1,1);
-    rendererVolOriginal ->AddViewProp(volumeOriginal);
+    rendererVolOriginal ->AddViewProp(volumeChecker);
     rendererVolOriginal ->ResetCamera();
 
     rendererBinaryOutput ->SetBackground(1,1,1);
-    rendererBinaryOutput ->AddViewProp(volumeBinary);
+    rendererBinaryOutput ->AddViewProp(volumeFixed);
     rendererBinaryOutput ->ResetCamera();
 
 
@@ -513,8 +553,8 @@ int main(int argc, char **argv) {
 
 
 
-      // Increase the size of the render window
-     renWin->SetSize(600, 600);
+    // Increase the size of the render window
+    renWin->SetSize(600, 600);
     renWin->Render();
 
       // Interact with the data.
@@ -528,11 +568,11 @@ int main(int argc, char **argv) {
     */
 
 
-    warpConnectorType::Pointer originalSliceConnector = warpConnectorType::New();
+    ImageConnectorType::Pointer originalSliceConnector = ImageConnectorType::New();
     originalSliceConnector->SetInput( fixedFilter->GetOutput() );
     originalSliceConnector->Update();
 
-    int *dimensions = connector->GetOutput()->GetDimensions();
+    int *dimensions = differenceConnector->GetOutput()->GetDimensions();
 
 
 
@@ -568,10 +608,10 @@ int main(int argc, char **argv) {
     renderWindowInteractor->SetInteractorStyle(customInteractorStyle );
 
     vtkSmartPointer<vtkImageMapper> imageMapperLeft = vtkSmartPointer<vtkImageMapper>::New();
-    imageMapperLeft->SetInputData(rawConnector->GetOutput());
+    imageMapperLeft->SetInputData(checkerConnector->GetOutput());
 
     vtkSmartPointer<vtkImageMapper> imageMapperRight = vtkSmartPointer<vtkImageMapper>::New();
-    imageMapperRight->SetInputData(connector->GetOutput());
+    imageMapperRight->SetInputData(differenceConnector->GetOutput());
 
 
     customInteractorStyle->SetMapper1(imageMapperLeft);
