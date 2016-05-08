@@ -453,14 +453,13 @@ void process() {
     typedef unsigned int                           LabelPixelType;
     typedef itk::Image<LabelPixelType, Dimension > LabelImageType;
 
-    typedef itk::ScalarConnectedComponentImageFilter <InputImageType, LabelImageType >
+    typedef itk::ConnectedComponentImageFilter <InputImageType, LabelImageType >
             ConnectedComponentImageFilterType;
 
 
     ConnectedComponentImageFilterType::Pointer connected =
             ConnectedComponentImageFilterType::New ();
     connected->SetInput(closingFilter->GetOutput());
-    connected->SetDistanceThreshold(ui->getDistance());
     connected->SetNumberOfThreads(8);
     connected->Update();
 
@@ -501,10 +500,8 @@ void process() {
     stats << "\n";
     stats << "Closing Filter Radius : " << ui->getRadius();
     stats << "\n";
-    stats << "Distance Threshold : " << ui->getDistance();
-    stats << "\n";
     stats << "Min Component Size : " << ui->getMin() << "\n";
-    stats << "Number of labels: " << labelCount;
+    stats << "Number of Components: " << labelCount;
 
     cout << stats.str() << endl;
 
@@ -529,7 +526,7 @@ void process() {
     RGBFilterType::Pointer rgbFilter =
             RGBFilterType::New();
     rgbFilter->SetInput( relabel->GetOutput() );
-    rgbFilter->SetBackgroundValue(255);
+    //rgbFilter->SetBackgroundValue(255);
     rgbFilter->SetBackgroundColor(pixel);
 
     rgbFilter->Update();

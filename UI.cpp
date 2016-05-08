@@ -17,11 +17,11 @@ UI::UI(){
     int topOffset = 25;
     int ySpacing = 55;
     int yOffsets[12];
-    for (int i = 0; i < 12; i++){
+    for (int i = 0; i < 11; i++){
         yOffsets[i] = topOffset + (i*ySpacing);
     }
 
-    Fl_Window* win= new Fl_Window( 450,700, "SEGMENTATION PROCESSOR" );
+    Fl_Window* win= new Fl_Window( 450,650, "SEGMENTATION PROCESSOR" );
     win->begin();
 
     directoryChooser = new Fl_Button( leftMargin, yOffsets[0], widgetWidth,widgetHeight, "Choose Directory" );
@@ -55,19 +55,19 @@ UI::UI(){
     radiusSlider = new SliderInput(leftMargin,yOffsets[7],widgetWidth,widgetHeight, "Closing Filter Radius");
     radiusSlider->bounds(1,10);       // set min/max for slider
     radiusSlider->value(4);           // set initial value
-
+/*
     distanceSlider = new SliderInput(leftMargin,yOffsets[8],widgetWidth,widgetHeight, "Distance Threshold");
     distanceSlider->bounds(1,30);       // set min/max for slider
     distanceSlider->value(2);           // set initial value
-
-    minSlider = new SliderInput(leftMargin,yOffsets[9],widgetWidth,widgetHeight, "Min Size");
+*/
+    minSlider = new SliderInput(leftMargin,yOffsets[8],widgetWidth,widgetHeight, "Min Size");
     minSlider->bounds(1,1000);       // set min/max for slider
     minSlider->value(100);           // set initial value
 
-    but = new Fl_Button( leftMargin, yOffsets[10], widgetWidth, widgetHeight, "PROCESS" );
+    but = new Fl_Button( leftMargin, yOffsets[9], widgetWidth, widgetHeight, "PROCESS" );
     but->deactivate();
 
-    progress = new Fl_Progress(leftMargin ,yOffsets[11], widgetWidth , widgetHeight);
+    progress = new Fl_Progress(leftMargin ,yOffsets[10], widgetWidth , widgetHeight);
     progress->minimum(0);                      // set progress range to be 0.0 ~ 1.0
     progress->maximum(1);
     progress->color(0x88888800);               // background color
@@ -104,7 +104,7 @@ void UI::deactivateSliders(){
     conductanceSlider->deactivate();
     thresholdSlider->deactivate();
     radiusSlider->deactivate();
-    distanceSlider->deactivate();
+    //distanceSlider->deactivate();
     minSlider->deactivate();
 }
 
@@ -114,7 +114,7 @@ void UI::activateSliders(){
     conductanceSlider->activate();
     thresholdSlider->activate();
     radiusSlider->activate();
-    distanceSlider->activate();
+    //distanceSlider->activate();
     minSlider->activate();
 }
 
@@ -194,9 +194,9 @@ void UI::updateOutputFile(){
     char buffer [200];
 
 
-    sprintf (buffer, "%soutput-%d-%.2f-%.2f-%d-%d-%d-%d.csv", directoryValue.c_str() ,
+    sprintf (buffer, "%soutput-%d-%.2f-%.2f-%d-%d-%d.csv", directoryValue.c_str() ,
              iterationsSlider->value(), timeStepSlider->value(), conductanceSlider->value(),
-             thresholdSlider->value(), radiusSlider->value(), distanceSlider->value(), minSlider->value());
+             thresholdSlider->value(), radiusSlider->value(),  minSlider->value());
 
     outputFile->value(buffer);
     //cout << buffer << endl;
@@ -236,9 +236,11 @@ int UI::getRadius(){
     return radiusSlider->value();
 }
 
+/*
 int UI::getDistance(){
     return distanceSlider->value();
 }
+ */
 
 int UI::getMin(){
     return minSlider->value();

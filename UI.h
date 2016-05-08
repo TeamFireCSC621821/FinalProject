@@ -59,7 +59,7 @@ class UI {
         float getConductance();
         int getThreshold();
         int getRadius();
-        int getDistance();
+        //int getDistance();
         int getMin();
 
 
