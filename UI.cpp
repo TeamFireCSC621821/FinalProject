@@ -194,7 +194,7 @@ void UI::updateOutputFile(){
     char buffer [200];
 
 
-    sprintf (buffer, "%soutput-%d-%.2f-%.2f-%d-%d-%d.csv", directoryValue.c_str() ,
+    sprintf (buffer, "%soutput-%d-%.2f-%.2f-%d-%d-%d.txt", directoryValue.c_str() ,
              iterationsSlider->value(), timeStepSlider->value(), conductanceSlider->value(),
              thresholdSlider->value(), radiusSlider->value(),  minSlider->value());
 

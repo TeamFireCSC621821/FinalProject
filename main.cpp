@@ -55,6 +55,7 @@
 #include <sstream>
 #include <string>
 #include "UI.h"
+#include "itkLabelImageToShapeLabelMapFilter.h"
 
 
 //For Edge Preserving Smoothing
@@ -480,12 +481,15 @@ void process() {
     int labelCount = relabel->GetNumberOfObjects();
     //std::cout << "Number of labels: " << labelCount << endl;
 
+    /*
     ofstream out(ui->getOutputFile());
+
     for(int n = 0; n < labelCount; n++){
         out  << n << "," << relabel->GetSizeOfObjectsInPixels()[n] << "," <<
                 relabel->GetSizeOfObjectsInPhysicalUnits()[n] << endl;
     }
     out.close();
+     */
 
     stringstream stats;
     stats << "Iterations : " << ui->getIterations();
@@ -538,7 +542,71 @@ void process() {
 
     ui->updateProgressBar(0.8f);
 
+    /**
+     *
+     * Statistics
+     */
 
+
+    typedef unsigned short                                LabelType;
+    typedef itk::Image< LabelType, Dimension >            OutputImageType;
+    typedef itk::ShapeLabelObject< LabelType, Dimension > ShapeLabelObjectType;
+    typedef itk::LabelMap< ShapeLabelObjectType >         LabelMapType;
+
+    typedef itk::LabelImageToShapeLabelMapFilter< LabelImageType, LabelMapType> I2LType;
+    I2LType::Pointer i2l = I2LType::New();
+    i2l->SetInput( relabel->GetOutput() );
+    i2l->SetComputePerimeter(true);
+    i2l->Update();
+
+    LabelMapType *labelMap = i2l->GetOutput();
+
+    ofstream out(ui->getOutputFile());
+
+
+
+    for (unsigned int n = 0; n < labelMap->GetNumberOfLabelObjects(); ++n)
+    {
+        ShapeLabelObjectType *labelObject = labelMap->GetNthLabelObject(n);
+        out << "Label: "
+        << itk::NumericTraits<LabelMapType::LabelType>::PrintType(labelObject->GetLabel()) << std::endl;
+        out << "    BoundingBox: "
+        << labelObject->GetBoundingBox() << std::endl;
+        out<< "    NumberOfPixels: "
+        << labelObject->GetNumberOfPixels() << std::endl;
+        out << "    PhysicalSize: "
+        << labelObject->GetPhysicalSize() << std::endl;
+        out << "    Centroid: "
+        << labelObject->GetCentroid() << std::endl;
+        out << "    NumberOfPixelsOnBorder: "
+        << labelObject->GetNumberOfPixelsOnBorder() << std::endl;
+        out << "    PerimeterOnBorder: "
+        << labelObject->GetPerimeterOnBorder() << std::endl;
+        out << "    FeretDiameter: "
+        << labelObject->GetFeretDiameter() << std::endl;
+        out << "    PrincipalMoments: "
+        << labelObject->GetPrincipalMoments() << std::endl;
+        out << "    PrincipalAxes: "
+        << labelObject->GetPrincipalAxes() << std::endl;
+        out << "    Elongation: "
+        << labelObject->GetElongation() << std::endl;
+        out << "    Perimeter: "
+        << labelObject->GetPerimeter() << std::endl;
+        out << "    Roundness: "
+        << labelObject->GetRoundness() << std::endl;
+        out << "    EquivalentSphericalRadius: "
+        << labelObject->GetEquivalentSphericalRadius() << std::endl;
+        out << "    EquivalentSphericalPerimeter: "
+        << labelObject->GetEquivalentSphericalPerimeter() << std::endl;
+        out << "    EquivalentEllipsoidDiameter: "
+        << labelObject->GetEquivalentEllipsoidDiameter() << std::endl;
+        out << "    Flatness: "
+        << labelObject->GetFlatness() << std::endl;
+        out << "    PerimeterOnBorderRatio: "
+        << labelObject->GetPerimeterOnBorderRatio() << std::endl << endl << endl;
+    }
+
+    out.close();
 
 
     /**
