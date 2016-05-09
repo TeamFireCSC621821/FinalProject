@@ -8,7 +8,6 @@
 #include "vtkRenderWindowInteractor.h"
 #include "itkImageSeriesReader.h"
 #include "itkCurvatureFlowImageFilter.h"
-#include <vtkDICOMImageReader.h>
 #include "itkGDCMSeriesFileNames.h"
 #include "itkGDCMImageIO.h"
 #include <vtkImageSliceMapper.h>
@@ -56,7 +55,7 @@
 #include <string>
 #include "UI.h"
 #include "itkLabelImageToShapeLabelMapFilter.h"
-
+#include "StatusMessage.h"
 
 //For Edge Preserving Smoothing
 
@@ -94,33 +93,18 @@ typedef itk::Image< InputPixelType, Dimension > InputImageType;
 typedef itk::Image< OutputPixelType, Dimension > OutputImageType;
 typedef itk::ImageToVTKImageFilter < InputImageType > ConnectorType;
 
-void  processCallback( Fl_Widget*, void* );
+
 void process();
-void updateProgressBar( Fl_Progress *progress , float percent);
-void open_cb(Fl_Widget*, void*);
-void updateOutputFile();
-void deactivateSliders();
 
 
-/**
- * Declare global widget pointers so they can talk to eachother without having to have a bunch of
- * pointers for arguments
- */
+
 
 
 
 UI* ui;
 
 
-// helper class to format slice status message
-class StatusMessage {
-public:
-    static std::string Format(int slice, int maxSlice) {
-        std::stringstream tmp;
-        tmp << "Slice Number  " << slice + 1 << "/" << maxSlice + 1;
-        return tmp.str();
-    }
-};
+
 
 class CustomInteractor : public vtkInteractorStyleImage
 {
@@ -479,17 +463,6 @@ void process() {
 
 
     int labelCount = relabel->GetNumberOfObjects();
-    //std::cout << "Number of labels: " << labelCount << endl;
-
-    /*
-    ofstream out(ui->getOutputFile());
-
-    for(int n = 0; n < labelCount; n++){
-        out  << n << "," << relabel->GetSizeOfObjectsInPixels()[n] << "," <<
-                relabel->GetSizeOfObjectsInPhysicalUnits()[n] << endl;
-    }
-    out.close();
-     */
 
     stringstream stats;
     stats << "Iterations : " << ui->getIterations();
@@ -531,7 +504,6 @@ void process() {
     RGBFilterType::Pointer rgbFilter =
             RGBFilterType::New();
     rgbFilter->SetInput( relabel->GetOutput() );
-    //rgbFilter->SetBackgroundValue(0);
     rgbFilter->SetBackgroundColor(pixel);
 
     rgbFilter->Update();
@@ -631,12 +603,9 @@ void process() {
     usageTextProp2->SetVerticalJustificationToTop();
     usageTextProp2->SetJustificationToLeft();
 
-    //typedef itk::ImageToVTKImageFilter < RGBImageType > ConnectorType;
+
     ConnectorType::Pointer rawConnector = ConnectorType::New();
-    //connector->SetInput( rgbFilter->GetOutput() );
     rawConnector->SetInput( reader->GetOutput() );
-    //connector->SetInput( filter->GetOutput() );
-    //connector->SetInput( reader->GetOutput() );
     rawConnector->Update();
 
     ConnectorType::Pointer preConnector = ConnectorType::New();
@@ -658,12 +627,9 @@ void process() {
 
 
 
-    //typedef itk::ImageToVTKImageFilter < RGBImageType > ConnectorType;
+
     ConnectorType::Pointer connector = ConnectorType::New();
-    //connector->SetInput( rgbFilter->GetOutput() );
     connector->SetInput( thresholdFilter->GetOutput() );
-    //connector->SetInput( filter->GetOutput() );
-    //connector->SetInput( reader->GetOutput() );
     connector->Update();
 
     vtkSmartPointer<vtkRenderWindow> renWin = vtkSmartPointer<vtkRenderWindow>::New();
@@ -674,9 +640,7 @@ void process() {
 
 
 
-    // Create the renderer, the render window, and the interactor. The renderer
-    // draws into the render window, the interactor enables mouse- and
-    // keyboard-based interaction with the scene.
+
 
     vtkSmartPointer<vtkRenderer> ren = vtkSmartPointer<vtkRenderer>::New();
     vtkSmartPointer<vtkRenderer> statRen = vtkSmartPointer<vtkRenderer>::New();
