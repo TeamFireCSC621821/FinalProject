@@ -355,11 +355,11 @@ int main(int argc, char **argv) {
     movingImageCaster->SetInput(movingFilter->GetOutput());
 
 	
-    //for(histogramMatchPoints = 6; histogramMatchPoints <= 8; histogramMatchPoints++) {
-     //   for(standardDeviations = 0.5; standardDeviations <= 1.5; standardDeviations+=0.5) {
+    for(histogramMatchPoints = 6; histogramMatchPoints <= 8; histogramMatchPoints++) {
+        for(standardDeviations = 0.5; standardDeviations <= 1.5; standardDeviations+=0.5) {
 
 
-			/*
+			
             typedef itk::HistogramMatchingImageFilter<InternalImageType, InternalImageType> MatchingFilterType;
             MatchingFilterType::Pointer matcher = MatchingFilterType::New();
 
@@ -400,7 +400,7 @@ int main(int argc, char **argv) {
             warper->SetOutputDirection(fixedImage->GetDirection());
 
             warper->SetDisplacementField(filter->GetOutput());
-			*/
+			
 
 
             /*
@@ -451,8 +451,8 @@ int main(int argc, char **argv) {
                 std::cerr << excp << std::endl;
                 return EXIT_FAILURE;
             }
-       // }
-    // }
+        }
+     }
     /**
     *
     * VTK
