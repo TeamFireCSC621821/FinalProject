@@ -268,8 +268,8 @@ int main(int argc, char **argv) {
 
     //nameGenerator->SetUseSeriesDetails( true );
     //nameGenerator->AddSeriesRestriction("0008|0021" );
-	fixedNameGenerator->SetDirectory("C:/Users/Guan/Desktop/images/GSM714050/Skull/CT");
-    movingNameGenerator->SetDirectory("C:/Users/Guan/Desktop/images/GSM714050/Skull/PT");
+	fixedNameGenerator->SetDirectory("C:/Users/Guan/Downloads/Images/GSM714049/1.3.6.1.4.1.14519.5.2.1.4334.1501.289355410171460323153775399045/1.3.6.1.4.1.14519.5.2.1.4334.1501.252450948398764180723210762820");
+    movingNameGenerator->SetDirectory("C:/Users/Guan/Downloads/Images/GSM714049/1.3.6.1.4.1.14519.5.2.1.4334.1501.903904917923659176782501655296/1.3.6.1.4.1.14519.5.2.1.4334.1501.136205917555503781160610541459");
 
 
     typedef std::vector< std::string >    SeriesIdContainer;
@@ -382,6 +382,7 @@ int main(int argc, char **argv) {
 
             try {
                 filter->Update();
+				cout << filter->GetMetric() << endl;
             }
             catch (itk::ExceptionObject &error) {
                 std::cerr << "Error: " << error << std::endl;
@@ -424,6 +425,7 @@ int main(int argc, char **argv) {
             std::string outputDirStr(oss.str());
             const char *outputDirectory = outputDirStr.c_str();
 
+			cout << outputDirectory << " " << filter->GetMetric() << endl;
             itksys::SystemTools::MakeDirectory(outputDirectory);
 
             const unsigned int OutputDimension = 2;
