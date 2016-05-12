@@ -1,43 +1,26 @@
 
 #include "itkImage.h"
 #include "itkImageFileReader.h"
-#include "itkImageToVTKImageFilter.h"
 #include "itkImageSeriesReader.h"
 #include "itkCurvatureFlowImageFilter.h"
 #include "itkGDCMSeriesFileNames.h"
 #include "itkGDCMImageIO.h"
 
-#include "itkBinaryThresholdImageFilter.h"
-#include "itkFastMarchingImageFilter.h"
-#include "itkConnectedComponentImageFilter.h"
-#include "itkLabelToRGBImageFilter.h"
-#include <vtkObjectFactory.h>
-#include <vtkInteractorStyleImage.h>
-#include <vtkActor2D.h>
-#include <vtkTextProperty.h>
-#include <vtkTextMapper.h>
 #include "itkCheckerBoardImageFilter.h"
 #include "itkImageIterator.h"
 
-//Registration Imports
+//For Registration
 #include "itkDemonsRegistrationFilter.h"
 #include "itkHistogramMatchingImageFilter.h"
 #include "itkCastImageFilter.h"
 #include "itkWarpImageFilter.h"
 
 //For Edge Preserving Smoothing
-
 #include "itkGradientAnisotropicDiffusionImageFilter.h"
 
-//Threshold Segmentation
-#include "itkThresholdSegmentationLevelSetImageFilter.h"
-#include "itkOtsuThresholdImageFilter.h"
-#include "itkThresholdImageFilter.h"
-#include "itkBinaryThresholdImageFilter.h"
-
+//For File out
 #include <iostream>
 #include <itkImageSeriesWriter.h>
-
 #include <string.h>
 #include <sstream>
 
@@ -61,7 +44,6 @@ typedef float InputPixelType;
 typedef float  OutputPixelType;
 typedef itk::Image< InputPixelType, Dimension > InputImageType;
 typedef itk::Image< OutputPixelType, Dimension > OutputImageType;
-typedef itk::ImageToVTKImageFilter < InputImageType > ConnectorType;
 
 //registration
 //const unsigned int Dimension = 3;
