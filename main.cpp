@@ -268,8 +268,8 @@ int main(int argc, char **argv) {
 
     //nameGenerator->SetUseSeriesDetails( true );
     //nameGenerator->AddSeriesRestriction("0008|0021" );
-	fixedNameGenerator->SetDirectory("C:/Users/Guan/Desktop/images/GSM714050/Skull/CT");
-    movingNameGenerator->SetDirectory("C:/Users/Guan/Desktop/images/GSM714050/Skull/PT");
+	fixedNameGenerator->SetDirectory("C:/Fixed");
+    movingNameGenerator->SetDirectory("C:/Moving");
 
 
     typedef std::vector< std::string >    SeriesIdContainer;
@@ -358,7 +358,7 @@ int main(int argc, char **argv) {
     for(histogramMatchPoints = 6; histogramMatchPoints <= 8; histogramMatchPoints++) {
         for(standardDeviations = 0.5; standardDeviations <= 1.5; standardDeviations+=0.5) {
 
-
+			cout << "Starting Histogram Matching";
 			
             typedef itk::HistogramMatchingImageFilter<InternalImageType, InternalImageType> MatchingFilterType;
             MatchingFilterType::Pointer matcher = MatchingFilterType::New();
@@ -370,7 +370,9 @@ int main(int argc, char **argv) {
 
             matcher->ThresholdAtMeanIntensityOn();
 
-            typedef itk::Vector<float, Dimension> VectorPixelType;
+			cout << "Starting demons";
+
+			typedef itk::Vector<float, Dimension> VectorPixelType;
             typedef itk::Image<VectorPixelType, Dimension> DisplacementFieldType;
             typedef itk::DemonsRegistrationFilter<InternalImageType, InternalImageType, DisplacementFieldType> RegistrationFilterType;
             RegistrationFilterType::Pointer filter = RegistrationFilterType::New();
@@ -388,6 +390,8 @@ int main(int argc, char **argv) {
                 return EXIT_FAILURE;
             }
 
+			cout << "Starting warping";
+
             typedef itk::WarpImageFilter<MovingImageType, MovingImageType, DisplacementFieldType> WarperType;
             typedef itk::LinearInterpolateImageFunction<MovingImageType, double> InterpolatorType;
             WarperType::Pointer warper = WarperType::New();
@@ -401,23 +405,11 @@ int main(int argc, char **argv) {
 
             warper->SetDisplacementField(filter->GetOutput());
 			
-
-
-            /*
-             * CheckBoard
-             *
-             */
-
-//    CheckerBoardFilterType::Pointer checkerBoardFilter = CheckerBoardFilterType::New();
-//    checkerBoardFilter->SetInput1(fixedFilter->GetOutput());
-//    checkerBoardFilter->SetInput2(warper->GetOutput());
-//    checkerBoardFilter->Update();
-
             /*
              * File output
              *
              */
-
+			
             std::ostringstream oss;
             oss << "output-" << histogramLevel << "-" << histogramMatchPoints <<
                     "-" << standardDeviations << "-" << numberOfIterations << "/";
@@ -425,6 +417,7 @@ int main(int argc, char **argv) {
             const char *outputDirectory = outputDirStr.c_str();
 
             itksys::SystemTools::MakeDirectory(outputDirectory);
+			cout << "File: " << outputDirectory;
 
             const unsigned int OutputDimension = 2;
             typedef itk::Image<PixelType, OutputDimension> Image2DType;
@@ -717,6 +710,7 @@ int main(int argc, char **argv) {
 //
 //
 //
+	getchar();
     return 0;
 }
 
