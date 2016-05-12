@@ -261,15 +261,15 @@ int main(int argc, char **argv) {
 
     fixedImageReader->SetImageIO(fixedDicomIO);
     movingImageReader->SetImageIO(movingDicomIO);
-    //reader->SetImageIO( dicomIO );
-    typedef itk::GDCMSeriesFileNames NamesGeneratorType;
+
+	typedef itk::GDCMSeriesFileNames NamesGeneratorType;
     NamesGeneratorType::Pointer fixedNameGenerator = NamesGeneratorType::New();
     NamesGeneratorType::Pointer movingNameGenerator = NamesGeneratorType::New();
 
-    //nameGenerator->SetUseSeriesDetails( true );
-    //nameGenerator->AddSeriesRestriction("0008|0021" );
+
 	fixedNameGenerator->SetDirectory("C:/Fixed");
     movingNameGenerator->SetDirectory("C:/Moving");
+
 
 
     typedef std::vector< std::string >    SeriesIdContainer;
@@ -384,6 +384,7 @@ int main(int argc, char **argv) {
 
             try {
                 filter->Update();
+				cout << filter->GetMetric() << endl;
             }
             catch (itk::ExceptionObject &error) {
                 std::cerr << "Error: " << error << std::endl;
@@ -416,6 +417,7 @@ int main(int argc, char **argv) {
             std::string outputDirStr(oss.str());
             const char *outputDirectory = outputDirStr.c_str();
 
+			cout << outputDirectory << " " << filter->GetMetric() << endl;
             itksys::SystemTools::MakeDirectory(outputDirectory);
 			cout << "File: " << outputDirectory;
 
@@ -446,272 +448,8 @@ int main(int argc, char **argv) {
             }
         }
      }
-    /**
-    *
-    * VTK
-    *
-    */
-//
-//    //typedef itk::ImageToVTKImageFilter < RGBImageType > ConnectorType;
-//    typedef itk::ImageToVTKImageFilter < MovingImageType > warpConnectorType;
-//    warpConnectorType::Pointer rawConnector = warpConnectorType::New();
-//    //connector->SetInput( rgbFilter->GetOutput() );
-//    rawConnector->SetInput( fixedFilter->GetOutput() );
-//    //connector->SetInput( filter->GetOutput() );
-//    //connector->SetInput( reader->GetOutput() );
-//    rawConnector->Update();
-//
-//
-//
-//    warpConnectorType::Pointer movingImageConnector = warpConnectorType::New();
-//    movingImageConnector->SetInput( movingFilter->GetOutput() );
-//    movingImageConnector->Update();
-//
-//
-//
-//
-//    //typedef itk::ImageToVTKImageFilter < MovingImageType > warpConnectorType;
-//    warpConnectorType::Pointer connector = warpConnectorType::New();
-//    //connector->SetInput( rgbFilter->GetOutput() );
-//    connector->SetInput( checkerBoardFilter->GetOutput() );
-//    //connector->SetInput( filter->GetOutput() );
-//    //connector->SetInput( reader->GetOutput() );
-//    connector->Update();
-//
-//    vtkSmartPointer<vtkRenderWindow> renWin = vtkSmartPointer<vtkRenderWindow>::New();
-//    vtkSmartPointer<vtkRenderWindowInteractor> iren = vtkSmartPointer<vtkRenderWindowInteractor>::New();
-//
-//    interactors.push_back(iren);
-//    iren->SetRenderWindow(renWin);
-//
-//
-//
-//    // Create the renderer, the render window, and the interactor. The renderer
-//    // draws into the render window, the interactor enables mouse- and
-//    // keyboard-based interaction with the scene.
-//
-//    vtkSmartPointer<vtkRenderer> ren = vtkSmartPointer<vtkRenderer>::New();
-//
-//
-//    vtkSmartPointer<vtkRenderer> rendererVolOriginal = vtkSmartPointer<vtkRenderer>::New();
-//    vtkSmartPointer<vtkRenderer> rendererBinaryOutput = vtkSmartPointer<vtkRenderer>::New();
-//
-//
-//
-//    renWin->AddRenderer(rendererVolOriginal);
-//    rendererVolOriginal->SetViewport(xmins[2],ymins[2],xmaxs[2],ymaxs[2]);
-//
-//    renWin->AddRenderer(ren);
-//    ren->SetViewport(xmins[3],ymins[3],xmaxs[3],ymaxs[3]);
-//
-//    renWin->AddRenderer(rendererBinaryOutput);
-//    rendererBinaryOutput->SetViewport(xmins[1],ymins[1],xmaxs[1],ymaxs[1]);
-//
-//
-//
-//
-//
-//    vtkSmartPointer<vtkFixedPointVolumeRayCastMapper> volumeMapper =
-//            vtkSmartPointer<vtkFixedPointVolumeRayCastMapper>::New();
-//    volumeMapper->SetInputData(connector->GetOutput());
-//
-//    vtkSmartPointer<vtkFixedPointVolumeRayCastMapper> volumeMapperOriginal =
-//            vtkSmartPointer<vtkFixedPointVolumeRayCastMapper>::New();
-//    volumeMapperOriginal->SetInputData(rawConnector->GetOutput());
-//
-//    vtkSmartPointer<vtkFixedPointVolumeRayCastMapper> volumeMapperBinary =
-//            vtkSmartPointer<vtkFixedPointVolumeRayCastMapper>::New();
-//    volumeMapperBinary->SetInputData(movingImageConnector->GetOutput());
-//
-//
-//    vtkSmartPointer<vtkColorTransferFunction>volumeColor =
-//         vtkSmartPointer<vtkColorTransferFunction>::New();
-//       //volumeColor->AddRGBPoint(0,    0.0, 0.0, 0.0);
-//       //volumeColor->AddRGBPoint(500,  1.0, 0.5, 0.3);
-//      // volumeColor->AddRGBPoint(1000, 1.0, 0.5, 0.3);
-//    //   volumeColor->AddRGBPoint(1150, 1.0, 1.0, 0.9);
-//    volumeColor->AddRGBPoint(1150,    0.0, 0.0, 0.0);
-//    volumeColor->AddRGBPoint(1000,  1.0, 0.5, 0.3);
-//    volumeColor->AddRGBPoint(500, 1.0, 0.5, 0.3);
-//    volumeColor->AddRGBPoint(0, 1.0, 1.0, 0.9);
-//
-//
-//    // The opacity transfer function is used to control the opacity
-//       // of different tissue types.
-//    vtkSmartPointer<vtkPiecewiseFunction> volumeScalarOpacity =
-//         vtkSmartPointer<vtkPiecewiseFunction>::New();
-//    volumeScalarOpacity->AddPoint(0,    0.00);
-//    volumeScalarOpacity->AddPoint(500,  0.15);
-//    volumeScalarOpacity->AddPoint(1000, 0.15);
-//    volumeScalarOpacity->AddPoint(1150, 0.85);
-//
-//    //volumeScalarOpacity->AddPoint(1150,    0.00);
-//    //volumeScalarOpacity->AddPoint(1000,  0.15);
-//    //volumeScalarOpacity->AddPoint(500, 0.15);
-//    //volumeScalarOpacity->AddPoint(0, 0.85);
-//
-//       // The gradient opacity function is used to decrease the opacity
-//       // in the "flat" regions of the volume while maintaining the opacity
-//       // at the boundaries between tissue types.  The gradient is measured
-//       // as the amount by which the intensity changes over unit distance.
-//       // For most medical data, the unit distance is 1mm.
-//       vtkSmartPointer<vtkPiecewiseFunction> volumeGradientOpacity =
-//         vtkSmartPointer<vtkPiecewiseFunction>::New();
-//       volumeGradientOpacity->AddPoint(0,   0.0);
-//       volumeGradientOpacity->AddPoint(90,  0.5);
-//       volumeGradientOpacity->AddPoint(100, 1.0);
-//
-//
-//       vtkSmartPointer<vtkVolumeProperty> volumeProperty =
-//         vtkSmartPointer<vtkVolumeProperty>::New();
-//       volumeProperty->SetColor(volumeColor);
-//       volumeProperty->SetScalarOpacity(volumeScalarOpacity);
-//       volumeProperty->SetGradientOpacity(volumeGradientOpacity);
-//       volumeProperty->SetInterpolationTypeToLinear();
-//       volumeProperty->ShadeOn();
-//       volumeProperty->SetAmbient(0.4);
-//       volumeProperty->SetDiffuse(0.6);
-//       volumeProperty->SetSpecular(0.2);
-//       // The vtkVolume is a vtkProp3D (like a vtkActor) and controls the position
-//       // and orientation of the volume in world coordinates.
-//       vtkSmartPointer<vtkVolume> volume =
-//        vtkSmartPointer<vtkVolume>::New();
-//       volume->SetMapper(volumeMapper);
-//       volume->SetProperty(volumeProperty);
-//
-//
-//    vtkSmartPointer<vtkVolume> volumeOriginal =
-//            vtkSmartPointer<vtkVolume>::New();
-//    volumeOriginal->SetMapper(volumeMapperOriginal);
-//    volumeOriginal->SetProperty(volumeProperty);
-//
-//
-//    vtkSmartPointer<vtkVolume> volumeBinary =
-//            vtkSmartPointer<vtkVolume>::New();
-//    volumeBinary->SetMapper(volumeMapperBinary);
-//    volumeBinary->SetProperty(volumeProperty);
-//
-//       // Finally, add the volume to the renderer
-//     ren->SetBackground(1,1,1);
-//     ren->AddViewProp(volume);
-//     ren->ResetCamera();
-//
-//
-//
-//    rendererVolOriginal ->SetBackground(1,1,1);
-//    rendererVolOriginal ->AddViewProp(volumeOriginal);
-//    rendererVolOriginal ->ResetCamera();
-//
-//    rendererBinaryOutput ->SetBackground(1,1,1);
-//    rendererBinaryOutput ->AddViewProp(volumeBinary);
-//    rendererBinaryOutput ->ResetCamera();
-//
-//
-//    rendererVolOriginal->SetActiveCamera(rendererBinaryOutput->GetActiveCamera());
-//    ren->SetActiveCamera(rendererVolOriginal->GetActiveCamera());
-//
-//
-//
-//
-//      // Increase the size of the render window
-//     renWin->SetSize(600, 600);
-//    renWin->Render();
-//
-//      // Interact with the data.
-//     //iren->Initialize();
-//     //iren->Start();
-//
-//    /**
-//    *
-//    * Visualize original
-//    *
-//    */
-//
-//
-//    warpConnectorType::Pointer originalSliceConnector = warpConnectorType::New();
-//    originalSliceConnector->SetInput( fixedFilter->GetOutput() );
-//    originalSliceConnector->Update();
-//
-//    int *dimensions = connector->GetOutput()->GetDimensions();
-//
-//
-//
-//
-//    vtkSmartPointer<vtkRenderWindow> renderWindow =
-//            vtkSmartPointer<vtkRenderWindow>::New();
-//
-//    renderWindow->SetSize(dimensions[0] * 2, dimensions[1]);
-//
-//
-//    vtkSmartPointer<vtkRenderWindowInteractor> renderWindowInteractor =
-//            vtkSmartPointer<vtkRenderWindowInteractor>::New();
-//
-//    vtkSmartPointer<vtkRenderer> rendererLeft =
-//            vtkSmartPointer<vtkRenderer>::New();
-//
-//    vtkSmartPointer<vtkRenderer> rendererRight =
-//            vtkSmartPointer<vtkRenderer>::New();
-//
-//    renderWindow->AddRenderer(rendererLeft);
-//    renderWindow->AddRenderer(rendererRight);
-//    rendererLeft->SetViewport(xmins2[0],ymins2[0],xmaxs2[0],ymaxs2[0]);
-//    rendererRight->SetViewport(xmins2[1],ymins2[1],xmaxs2[1],ymaxs2[1]);
-//
-//    interactors.push_back(renderWindowInteractor);
-//
-//    vtkSmartPointer<CustomInteractor> customInteractorStyle =
-//            vtkSmartPointer<CustomInteractor>::New();
-//
-//
-//    renderWindowInteractor->SetRenderWindow(renderWindow);
-//    renderWindow->Render();
-//    renderWindowInteractor->SetInteractorStyle(customInteractorStyle );
-//
-//    vtkSmartPointer<vtkImageMapper> imageMapperLeft = vtkSmartPointer<vtkImageMapper>::New();
-//    imageMapperLeft->SetInputData(rawConnector->GetOutput());
-//
-//    vtkSmartPointer<vtkImageMapper> imageMapperRight = vtkSmartPointer<vtkImageMapper>::New();
-//    imageMapperRight->SetInputData(connector->GetOutput());
-//
-//
-//    customInteractorStyle->SetMapper1(imageMapperLeft);
-//    customInteractorStyle->SetMapper2(imageMapperRight);
-//    customInteractorStyle->SetRenderer1(rendererLeft);
-//    customInteractorStyle->SetRenderer2(rendererRight);
-//    customInteractorStyle->SetRenderWindow(renderWindow);
-//
-//
-//    //customInteractorStyle->SetStatusMapper(sliceTextMapper);
-//
-//    rendererRight->GetActiveCamera()->ParallelProjectionOn();
-//    rendererLeft->GetActiveCamera()->ParallelProjectionOn();
-//
-//    vtkSmartPointer<vtkActor2D> imageActorLeft = vtkSmartPointer<vtkActor2D>::New();
-//    imageActorLeft ->SetMapper(imageMapperLeft);
-//    rendererLeft->AddActor2D(imageActorLeft);
-//    rendererLeft->SetBackground(1,1,1);
-//
-//    vtkSmartPointer<vtkActor2D> imageActorRight = vtkSmartPointer<vtkActor2D>::New();
-//    imageActorRight ->SetMapper(imageMapperRight);
-//    rendererRight->AddActor2D(imageActorRight);
-//
-//    rendererLeft->Render();
-//    rendererLeft->ResetCamera();
-//    rendererLeft->Render();
-//
-//    rendererRight->Render();
-//    rendererRight->ResetCamera();
-//    rendererRight->Render();
-//
-//
-//
-//    interactors[1]->Start();
-//
-//
-//
-//
-	getchar();
-    return 0;
+
+	return 0;
 }
 
 
