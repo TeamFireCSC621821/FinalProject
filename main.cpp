@@ -2,32 +2,11 @@
 #include "itkImage.h"
 #include "itkImageFileReader.h"
 #include "itkImageToVTKImageFilter.h"
-#include "vtkImageViewer.h"
-#include "vtkRenderWindowInteractor.h"
 #include "itkImageSeriesReader.h"
 #include "itkCurvatureFlowImageFilter.h"
-#include <vtkDICOMImageReader.h>
 #include "itkGDCMSeriesFileNames.h"
 #include "itkGDCMImageIO.h"
-#include <vtkImageSliceMapper.h>
-#include <vtkImageMapper.h>
-#include <vtkImageSlice.h>
-#include <vtkVolumeProperty.h>
-#include <vtkSmartVolumeMapper.h>
-#include <vtkSmartPointer.h>
-#include <vtkRenderWindow.h>
-#include <vtkRenderer.h>
-#include <vtkRenderWindowInteractor.h>
-#include <vtkImageViewer2.h>
-#include <vtkTextProperty.h>
-#include <vtkTextMapper.h>
-#include <vtkImageShiftScale.h>
-#include <vtkImageClip.h>
-#include <vtkVolumeRayCastMapper.h>
-#include <vtkFixedPointVolumeRayCastMapper.h>
-#include <vtkColorTransferFunction.h>
-#include <vtkPiecewiseFunction.h>
-#include <vtkCamera.h>
+
 #include "itkBinaryThresholdImageFilter.h"
 #include "itkFastMarchingImageFilter.h"
 #include "itkConnectedComponentImageFilter.h"
@@ -99,158 +78,11 @@ typedef itk::GradientAnisotropicDiffusionImageFilter<FixedImageType,FixedImageTy
 typedef itk::CheckerBoardImageFilter< FixedImageType > CheckerBoardFilterType;
 
 
-// helper class to format slice status message
-class StatusMessage {
-public:
-    static std::string Format(int slice, int maxSlice) {
-        std::stringstream tmp;
-        tmp << "Slice Number  " << slice + 1 << "/" << maxSlice + 1;
-        return tmp.str();
-    }
-};
-
-class CustomInteractor : public vtkInteractorStyleImage
-{
-public:
-    static CustomInteractor* New();
-    vtkTypeMacro(CustomInteractor, vtkInteractorStyleImage);
-
-protected:
-    //vtkImageViewer2* _ImageViewer;
-    vtkTextMapper* _StatusMapper;
-    vtkImageMapper* _ImageMapperLeft;
-    vtkImageMapper* _ImageMapperRight;
-    vtkRenderer* _ImageRendererLeft;
-    vtkRenderer* _ImageRendererRight;
-    vtkRenderWindow* _RenderWindow;
-
-    int _Slice;
-    int _MinSlice;
-    int _MaxSlice;
-
-public:
-    void SetImageViewer(vtkImageViewer2* imageViewer) {
-        //_ImageViewer = imageViewer;
-        //_MinSlice = imageViewer->GetSliceMin();
-        //_MaxSlice = imageViewer->GetSliceMax();
-        _Slice = _MinSlice;
-        //cout << "Slicer: Min = " << _MinSlice << ", Max = " << _MaxSlice << std::endl;
-    }
-
-    void SetStatusMapper(vtkTextMapper* statusMapper) {
-        _StatusMapper = statusMapper;
-
-    }
-
-
-    void SetMapper1(vtkImageMapper* imageMapper){
-        _ImageMapperLeft = imageMapper;
-        _MinSlice = imageMapper->GetWholeZMin();
-        _MaxSlice = imageMapper->GetWholeZMax();
-        _Slice = _MinSlice;
-    }
-
-    void SetMapper2(vtkImageMapper* imageMapper){
-        _ImageMapperRight = imageMapper;
-    }
-
-    void SetRenderer1(vtkRenderer* imageRenderer){
-        _ImageRendererLeft = imageRenderer;
-    }
-
-    void SetRenderer2(vtkRenderer* imageRenderer){
-        _ImageRendererRight = imageRenderer;
-    }
-
-    void SetRenderWindow(vtkRenderWindow* window){
-        _RenderWindow = window;
-    }
-
-
-protected:
-    void MoveSliceForward() {
-        if(_Slice < _MaxSlice) {
-            _Slice += 1;
-            cout << "MoveSliceForward::Slice = " << _Slice << std::endl;
-            //_ImageViewer->SetSlice(_Slice);
-            _ImageMapperRight->SetZSlice(_Slice);
-            _ImageMapperLeft->SetZSlice(_Slice);
-            _ImageRendererLeft->Render();
-            _ImageRendererRight->Render();
-            _RenderWindow->Render();
-            std::string msg = StatusMessage::Format(_Slice, _MaxSlice);
-            //_StatusMapper->SetInput(msg.c_str());
-            //_ImageViewer->Render();
-            //_ImageMapperLeft->Render();
-            //_ImageMapperRight->Render();
-
-        }
-    }
-
-    void MoveSliceBackward() {
-        if(_Slice > _MinSlice) {
-            _Slice -= 1;
-            cout << "MoveSliceBackward::Slice = " << _Slice << std::endl;
-            //_ImageViewer->SetSlice(_Slice);
-            _ImageMapperLeft->SetZSlice(_Slice);
-            _ImageMapperRight->SetZSlice(_Slice);
-            _RenderWindow->Render();
-            //std::string msg = StatusMessage::Format(_Slice, _MaxSlice);
-            //_StatusMapper->SetInput(msg.c_str());
-            //_ImageViewer->Render();
-        }
-    }
-
-
-    virtual void OnKeyDown() {
-        std::string key = this->GetInteractor()->GetKeySym();
-        if(key.compare("Up") == 0) {
-            //cout << "Up arrow key was pressed." << endl;
-            MoveSliceForward();
-        }
-        else if(key.compare("Down") == 0) {
-            //cout << "Down arrow key was pressed." << endl;
-            MoveSliceBackward();
-        }
-        // forward event
-        vtkInteractorStyleImage::OnKeyDown();
-    }
-
-
-    virtual void OnMouseWheelForward() {
-        //std::cout << "Scrolled mouse wheel forward." << std::endl;
-        MoveSliceForward();
-        // don't forward events, otherwise the image will be zoomed
-        // in case another interactorstyle is used (e.g. trackballstyle, ...)
-        // vtkInteractorStyleImage::OnMouseWheelForward();
-    }
-
-
-    virtual void OnMouseWheelBackward() {
-        //std::cout << "Scrolled mouse wheel backward." << std::endl;
-        if(_Slice > _MinSlice) {
-            MoveSliceBackward();
-        }
-        // don't forward events, otherwise the image will be zoomed
-        // in case another interactorstyle is used (e.g. trackballstyle, ...)
-        // vtkInteractorStyleImage::OnMouseWheelBackward();
-    }
-};
-
-
-
-
-vtkStandardNewMacro( CustomInteractor);
 SmoothingFilterType::Pointer Smoothing(FixedImageReaderType::Pointer);
-//SmoothingFilterType::Pointer Smoothing(MovingImageReaderType::Pointer);
 
 int main(int argc, char **argv) {
-    std::vector<vtkSmartPointer<vtkRenderWindowInteractor> > interactors;
-
-
-
-    //This is for fixedImage loading
-    //typedef itk::Image< InputPixelType, Dimension > ImageType;
+	
+	//This is for fixedImage loading
 
     typedef itk::GDCMImageIO       ImageIOType;
     ImageIOType::Pointer fixedDicomIO = ImageIOType::New();
