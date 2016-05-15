@@ -5,6 +5,7 @@
 #include "itkCurvatureFlowImageFilter.h"
 #include "itkGDCMSeriesFileNames.h"
 #include "itkGDCMImageIO.h"
+#include "itkMacro.h"
 
 #include "itkCheckerBoardImageFilter.h"
 #include "itkImageIterator.h"
@@ -54,6 +55,12 @@ typedef itk::Image< PixelType, Dimension > MovingImageType;
 typedef itk::ImageSeriesReader< FixedImageType >        FixedImageReaderType;
 typedef itk::ImageSeriesReader< MovingImageType >        MovingImageReaderType;
 
+typedef float InternalPixelType;
+typedef itk::Image<InternalPixelType, Dimension> InternalImageType;
+typedef itk::Vector<float, Dimension> VectorPixelType;
+typedef itk::Image<VectorPixelType, Dimension> DisplacementFieldType;
+typedef itk::DemonsRegistrationFilter<InternalImageType, InternalImageType, DisplacementFieldType> RegistrationFilterType;
+
 typedef itk::GradientAnisotropicDiffusionImageFilter<FixedImageType,FixedImageType > SmoothingFilterType;
 
 //checkerboard typedefs
@@ -61,6 +68,39 @@ typedef itk::CheckerBoardImageFilter< FixedImageType > CheckerBoardFilterType;
 
 
 SmoothingFilterType::Pointer Smoothing(FixedImageReaderType::Pointer);
+
+class CommandIterationFileout : public itk::Command
+{
+public:
+	typedef  CommandIterationFileout                     Self;
+	typedef  itk::Command                               Superclass;
+	typedef  itk::SmartPointer<CommandIterationFileout>  Pointer;
+	itkNewMacro(CommandIterationFileout);
+protected:
+	CommandIterationFileout() {};
+private:
+	ofstream * os;
+
+public:
+
+	void SetFile(ofstream & ostream) {
+		os = &ostream;
+	}
+
+	void Execute(itk::Object *caller, const itk::EventObject & event)
+	{
+		Execute((const itk::Object *)caller, event);
+	}
+	void Execute(const itk::Object * object, const itk::EventObject & event)
+	{
+		const RegistrationFilterType * filter = static_cast< const RegistrationFilterType * >(object);
+		if (!(itk::IterationEvent().CheckEvent(&event)))
+		{
+			return;
+		}
+		(*os) << filter->GetElapsedIterations() << "," <<  filter->GetMetric() << endl;
+	}
+};
 
 int main(int argc, char **argv) {
 	
@@ -81,9 +121,8 @@ int main(int argc, char **argv) {
     NamesGeneratorType::Pointer movingNameGenerator = NamesGeneratorType::New();
 
 
-	fixedNameGenerator->SetDirectory("C:/Fixed");
-    movingNameGenerator->SetDirectory("C:/Moving");
-
+	fixedNameGenerator->SetDirectory("C:/FixedCT");
+    movingNameGenerator->SetDirectory("C:/MovingCT");
 
 
     typedef std::vector< std::string >    SeriesIdContainer;
@@ -113,9 +152,6 @@ int main(int argc, char **argv) {
     {
         std::cout << ex << std::endl;
     }
-
-
-
 
     //moving
     //typedef std::vector< std::string >    SeriesIdContainer;
@@ -154,11 +190,9 @@ int main(int argc, char **argv) {
      */
     int histogramLevel = 512;
     int histogramMatchPoints = 7;
-    int numberOfIterations = 10;
+    int numberOfIterations = 50;
     float standardDeviations = 1.0;
 
-    typedef float InternalPixelType;
-    typedef itk::Image<InternalPixelType, Dimension> InternalImageType;
     typedef itk::CastImageFilter<FixedImageType, InternalImageType> FixedImageCasterType;
     typedef itk::CastImageFilter<MovingImageType, InternalImageType> MovingImageCasterType;
 
@@ -168,100 +202,111 @@ int main(int argc, char **argv) {
     fixedImageCaster->SetInput(fixedFilter->GetOutput());
     movingImageCaster->SetInput(movingFilter->GetOutput());
 
+	ofstream metricsFile;
+	metricsFile.open("metrics.csv");
+
+	for(histogramLevel = 512; histogramLevel <= 2048; histogramLevel*=2) {
+		for (histogramMatchPoints = 6; histogramMatchPoints <= 8; histogramMatchPoints++) {
+			for (standardDeviations = 0.5; standardDeviations <= 1.5; standardDeviations += 0.5) {
 	
-    for(histogramMatchPoints = 6; histogramMatchPoints <= 8; histogramMatchPoints++) {
-        for(standardDeviations = 0.5; standardDeviations <= 1.5; standardDeviations+=0.5) {
+				metricsFile << "Histogram Levels, Histogram Match Points, Standard Deviations\n";
+				metricsFile << histogramLevel << "," << histogramMatchPoints << "," << standardDeviations << endl;
+				metricsFile << "Iteration,Mean Square Difference\n";
+				metricsFile << " ," << histogramLevel << "-" << histogramMatchPoints << "-" << standardDeviations << endl;
 
-			cout << "Starting Histogram Matching";
-			
-            typedef itk::HistogramMatchingImageFilter<InternalImageType, InternalImageType> MatchingFilterType;
-            MatchingFilterType::Pointer matcher = MatchingFilterType::New();
+				cout << "Starting Histogram Matching\n";
 
-            matcher->SetInput(movingImageCaster->GetOutput());
-            matcher->SetReferenceImage(fixedImageCaster->GetOutput());
-            matcher->SetNumberOfHistogramLevels(histogramLevel);
-            matcher->SetNumberOfMatchPoints(histogramMatchPoints);
+				typedef itk::HistogramMatchingImageFilter<InternalImageType, InternalImageType> MatchingFilterType;
+				MatchingFilterType::Pointer matcher = MatchingFilterType::New();
 
-            matcher->ThresholdAtMeanIntensityOn();
+				matcher->SetInput(movingImageCaster->GetOutput());
+				matcher->SetReferenceImage(fixedImageCaster->GetOutput());
+				matcher->SetNumberOfHistogramLevels(histogramLevel);
+				matcher->SetNumberOfMatchPoints(histogramMatchPoints);
 
-			cout << "Starting demons";
+				matcher->ThresholdAtMeanIntensityOn();
 
-			typedef itk::Vector<float, Dimension> VectorPixelType;
-            typedef itk::Image<VectorPixelType, Dimension> DisplacementFieldType;
-            typedef itk::DemonsRegistrationFilter<InternalImageType, InternalImageType, DisplacementFieldType> RegistrationFilterType;
-            RegistrationFilterType::Pointer filter = RegistrationFilterType::New();
-            filter->SetFixedImage(fixedImageCaster->GetOutput());
-            filter->SetMovingImage(matcher->GetOutput());
+				cout << "Starting demons\n";
 
-            filter->SetNumberOfIterations(numberOfIterations);
-            filter->SetStandardDeviations(standardDeviations);
+				RegistrationFilterType::Pointer filter = RegistrationFilterType::New();
+				CommandIterationFileout::Pointer observer = CommandIterationFileout::New();
+				observer->SetFile(metricsFile);
+				filter->AddObserver(itk::IterationEvent(), observer);
 
-            try {
-                filter->Update();
-				cout << filter->GetMetric() << endl;
-            }
-            catch (itk::ExceptionObject &error) {
-                std::cerr << "Error: " << error << std::endl;
-                return EXIT_FAILURE;
-            }
+				filter->SetFixedImage(fixedImageCaster->GetOutput());
+				filter->SetMovingImage(matcher->GetOutput());
 
-			cout << "Starting warping";
+				filter->SetNumberOfIterations(numberOfIterations);
+				filter->SetStandardDeviations(standardDeviations);
 
-            typedef itk::WarpImageFilter<MovingImageType, MovingImageType, DisplacementFieldType> WarperType;
-            typedef itk::LinearInterpolateImageFunction<MovingImageType, double> InterpolatorType;
-            WarperType::Pointer warper = WarperType::New();
-            InterpolatorType::Pointer interpolator = InterpolatorType::New();
-            FixedImageType::Pointer fixedImage = fixedFilter->GetOutput();
-            warper->SetInput(movingFilter->GetOutput());
-            warper->SetInterpolator(interpolator);
-            warper->SetOutputSpacing(fixedImage->GetSpacing());
-            warper->SetOutputOrigin(fixedImage->GetOrigin());
-            warper->SetOutputDirection(fixedImage->GetDirection());
+				try {
+					filter->Update();
+				}
+				catch (itk::ExceptionObject &error) {
+					std::cerr << "Error: " << error << std::endl;
+					return EXIT_FAILURE;
+				}
 
-            warper->SetDisplacementField(filter->GetOutput());
-			
-            /*
-             * File output
-             *
-             */
-			
-            std::ostringstream oss;
-            oss << "output-" << histogramLevel << "-" << histogramMatchPoints <<
-                    "-" << standardDeviations << "-" << numberOfIterations << "/";
-            std::string outputDirStr(oss.str());
-            const char *outputDirectory = outputDirStr.c_str();
+				cout << "Starting warping\n";
 
-			cout << outputDirectory << " " << filter->GetMetric() << endl;
-            itksys::SystemTools::MakeDirectory(outputDirectory);
-			cout << "File: " << outputDirectory;
+				typedef itk::WarpImageFilter<MovingImageType, MovingImageType, DisplacementFieldType> WarperType;
+				typedef itk::LinearInterpolateImageFunction<MovingImageType, double> InterpolatorType;
+				WarperType::Pointer warper = WarperType::New();
+				InterpolatorType::Pointer interpolator = InterpolatorType::New();
+				FixedImageType::Pointer fixedImage = fixedFilter->GetOutput();
+				warper->SetInput(movingFilter->GetOutput());
+				warper->SetInterpolator(interpolator);
+				warper->SetOutputSpacing(fixedImage->GetSpacing());
+				warper->SetOutputOrigin(fixedImage->GetOrigin());
+				warper->SetOutputDirection(fixedImage->GetDirection());
 
-            const unsigned int OutputDimension = 2;
-            typedef itk::Image<PixelType, OutputDimension> Image2DType;
-            typedef itk::ImageSeriesWriter<
-                    MovingImageType, Image2DType> SeriesWriterType;
+				warper->SetDisplacementField(filter->GetOutput());
 
-            SeriesWriterType::Pointer seriesWriter = SeriesWriterType::New();
-            //seriesWriter->SetInput(warper->GetOutput());
-			seriesWriter->SetInput(movingImageReader->GetOutput());
-            seriesWriter->SetImageIO(movingDicomIO);
+				/*
+				 * File output
+				 *
+				 */
 
-            //NamesGeneratorType::Pointer outputNamesGenerator = NamesGeneratorType::New();
-            movingNameGenerator->SetOutputDirectory(outputDirectory);
-            seriesWriter->SetFileNames(movingNameGenerator->GetOutputFileNames());
+				std::ostringstream oss;
+				oss << "output-" << histogramLevel << "-" << histogramMatchPoints <<
+					"-" << standardDeviations << "-" << numberOfIterations << "/";
+				std::string outputDirStr(oss.str());
+				const char *outputDirectory = outputDirStr.c_str();
 
-            seriesWriter->SetMetaDataDictionaryArray(
-                    movingImageReader->GetMetaDataDictionaryArray());
+				cout << outputDirectory << " " << filter->GetMetric() << endl;
+				itksys::SystemTools::MakeDirectory(outputDirectory);
+				cout << "File: " << outputDirectory << endl;
 
-            try {
-                seriesWriter->Update();
-            }
-            catch (itk::ExceptionObject &excp) {
-                std::cerr << "Exception thrown while writing the series " << std::endl;
-                std::cerr << excp << std::endl;
-                return EXIT_FAILURE;
-            }
-        }
+				const unsigned int OutputDimension = 2;
+				typedef itk::Image<PixelType, OutputDimension> Image2DType;
+				typedef itk::ImageSeriesWriter<
+					MovingImageType, Image2DType> SeriesWriterType;
+
+				SeriesWriterType::Pointer seriesWriter = SeriesWriterType::New();
+				//seriesWriter->SetInput(warper->GetOutput());
+				seriesWriter->SetInput(movingImageReader->GetOutput());
+				seriesWriter->SetImageIO(movingDicomIO);
+
+				//NamesGeneratorType::Pointer outputNamesGenerator = NamesGeneratorType::New();
+				movingNameGenerator->SetOutputDirectory(outputDirectory);
+				seriesWriter->SetFileNames(movingNameGenerator->GetOutputFileNames());
+
+				seriesWriter->SetMetaDataDictionaryArray(
+					movingImageReader->GetMetaDataDictionaryArray());
+
+				try {
+					seriesWriter->Update();
+				}
+				catch (itk::ExceptionObject &excp) {
+					std::cerr << "Exception thrown while writing the series " << std::endl;
+					std::cerr << excp << std::endl;
+					return EXIT_FAILURE;
+				}
+				metricsFile << endl;
+			}
+		}
      }
+	metricsFile.close();
 
 	return 0;
 }
