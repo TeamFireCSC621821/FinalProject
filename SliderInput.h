@@ -1,7 +1,7 @@
-//
-// Created by mac on 5/7/16.
-//
-
+/*!
+ * @brief An integer slider use to get values from user
+ * @file
+ * */
 #ifndef FINALPROJECTBIOMED_SLIDERINPUT_H
 #define FINALPROJECTBIOMED_SLIDERINPUT_H
 
@@ -15,13 +15,12 @@
 #include <FL/Fl_Slider.H>
 #include <FL/Fl_Progress.H>
 
+//! Class used to get integer values from a slider
 class SliderInput : public Fl_Group {
-    Fl_Int_Input *input;
-    Fl_Slider    *slider;
+    Fl_Int_Input *input; //!The fltk text input
+    Fl_Slider    *slider; //!Stock fltk slider
 
-    // CALLBACK HANDLERS
-    //    These 'attach' the input and slider's values together.
-    //
+    //! Used to connect text input and slider input
     void Slider_CB2() {
         static int recurse = 0;
         if ( recurse ) {
@@ -37,11 +36,13 @@ class SliderInput : public Fl_Group {
         }
     }
 
+    //! Callback to update slider values
     static void Slider_CB(Fl_Widget *w, void *data) {
         ((SliderInput*)data)->Slider_CB2();
 
     }
 
+    //! Used to connect text input and slider input
     void Input_CB2() {
         static int recurse = 0;
         if ( recurse ) {
@@ -59,6 +60,7 @@ class SliderInput : public Fl_Group {
 
         }
     }
+    //! Callback to update slider values
     static void Input_CB(Fl_Widget *w, void *data) {
 
 
@@ -66,7 +68,7 @@ class SliderInput : public Fl_Group {
     }
 
 public:
-    // CTOR
+    //! Constructor
     SliderInput(int x, int y, int w, int h, const char *l=0) : Fl_Group(x,y,w,h,l) {
         int in_w = 40;
         input  = new Fl_Int_Input(x, y, in_w, h);
@@ -82,14 +84,13 @@ public:
         end();             // close the group
     }
 
-    // MINIMAL ACCESSORS --  Add your own as needed
-    int  value() const    { return((int)(slider->value() + 0.5)); }
-    void value(int val)   { slider->value(val); Slider_CB2(); }
-    void minumum(int val) { slider->minimum(val); }
-    int  minumum() const  { return((int)slider->minimum()); }
-    void maximum(int val) { slider->maximum(val); }
-    int  maximum() const  { return((int)slider->maximum()); }
-    void bounds(int low, int high) { slider->bounds(low, high); }
+    int  value() const    { return((int)(slider->value() + 0.5)); } //! Returns slider value
+    void value(int val)   { slider->value(val); Slider_CB2(); } //! Sets slider value
+    void minumum(int val) { slider->minimum(val); } //! Sets minimum value
+    int  minumum() const  { return((int)slider->minimum()); } //! Gets Maximum Value
+    void maximum(int val) { slider->maximum(val); } //! Sets Minimum Value
+    int  maximum() const  { return((int)slider->maximum()); } //! Sets Maximum Value
+    void bounds(int low, int high) { slider->bounds(low, high); } //! Set min/max bounds
 };
 
 

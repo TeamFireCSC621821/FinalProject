@@ -1,7 +1,7 @@
-//
-// Created by mac on 5/7/16.
-//
-
+/*!
+ * @brief Used for displaying justified text
+ * @file
+ * */
 #ifndef FINALPROJECTBIOMED_FL_JUSTIFY_INPUT_H
 #define FINALPROJECTBIOMED_FL_JUSTIFY_INPUT_H
 
@@ -21,7 +21,7 @@ class Fl_Justify_Input : public Fl_Group {
     Fl_Input *inp;
     Fl_Box   *box;
 public:
-    // Ctor
+    //! Constructor
     Fl_Justify_Input(int X,int Y,int W,int H,const char *L=0):Fl_Group(X,Y,W,H,L) {
         Fl_Group::box(FL_NO_BOX);
         box = new Fl_Box(X,Y,W,H);
@@ -34,22 +34,20 @@ public:
 
         end();
     }
-    // Set text justification. Expects one of:
-    // FL_ALIGN_LEFT, FL_ALIGN_CENTER, FL_ALIGN_RIGHT.
-    //
+    //! Set text justification
     void justify(Fl_Align val) {
         box->align(val|FL_ALIGN_INSIDE);
     }
-    // Returns text justification
+    //! Returns text justification
     Fl_Align justify() const {
         return box->align();
     }
-    // Sets the text value
+    //! Sets the text value
     void value(const char *val) {
         box->copy_label(val);
         inp->value(val);
     }
-    // Gets the text value
+    //! Gets the text value
     const char *value() const {
         return inp->value();
     }

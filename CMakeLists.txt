@@ -5,7 +5,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 find_package(Doxygen)
 
-set(SOURCE_FILES main.cpp UI.cpp Fl_Justify_Input.cpp SliderInput.cpp SliderFloatInput.cpp)
+set(SOURCE_FILES main.cpp UI.cpp Fl_Justify_Input.cpp)
 
 if(DOXYGEN_FOUND)
 

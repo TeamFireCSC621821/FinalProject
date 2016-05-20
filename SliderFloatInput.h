@@ -1,7 +1,7 @@
-//
-// Created by mac on 5/7/16.
-//
-
+/*!
+ * @brief A float slider to allow users to select a value
+ * @file
+ * */
 #ifndef FINALPROJECTBIOMED_SLIDERFLOATINPUT_H
 #define FINALPROJECTBIOMED_SLIDERFLOATINPUT_H
 
@@ -15,14 +15,12 @@
 #include <FL/Fl_Slider.H>
 #include <FL/Fl_Progress.H>
 
-
+//! Class used to get integer values from a slider
 class SliderFloatInput : public Fl_Group {
-    Fl_Float_Input *input;
-    Fl_Slider    *slider;
+    Fl_Float_Input *input; //!The fltk float input
+    Fl_Slider    *slider; //!Stock fltk slider
 
-    // CALLBACK HANDLERS
-    //    These 'attach' the input and slider's values together.
-    //
+    //! Used to connect text input and slider input
     void Slider_CB2() {
         static int recurse = 0;
         if ( recurse ) {
@@ -37,6 +35,7 @@ class SliderFloatInput : public Fl_Group {
         }
     }
 
+    //! Used to connect text input and slider input
     static void Slider_CB(Fl_Widget *w, void *data) {
 
 
@@ -44,6 +43,7 @@ class SliderFloatInput : public Fl_Group {
         ((SliderFloatInput*)data)->Slider_CB2();
     }
 
+    //! Callback to update slider values
     void Input_CB2() {
         static int recurse = 0;
         if ( recurse ) {
@@ -61,15 +61,16 @@ class SliderFloatInput : public Fl_Group {
             recurse = 0;
         }
     }
-    static void Input_CB(Fl_Widget *w, void *data) {
 
+    //! Used to connect text input and slider input
+    static void Input_CB(Fl_Widget *w, void *data) {
 
 
         ((SliderFloatInput*)data)->Input_CB2();
     }
 
 public:
-    // CTOR
+    //! Constructor
     SliderFloatInput(int x, int y, int w, int h, const char *l=0) : Fl_Group(x,y,w,h,l) {
         int in_w = 40;
         input  = new Fl_Float_Input(x, y, in_w, h);
@@ -85,14 +86,13 @@ public:
         end();             // close the group
     }
 
-    // MINIMAL ACCESSORS --  Add your own as needed
-    float  value() const    { return((float)(slider->value())); }
-    void value(float val)   { slider->value(val); Slider_CB2(); }
-    void minumum(float val) { slider->minimum(val); }
-    int  minumum() const  { return((float)slider->minimum()); }
-    void maximum(float val) { slider->maximum(val); }
-    int  maximum() const  { return((int)slider->maximum()); }
-    void bounds(float low, float high) { slider->bounds(low, high); }
+    float  value() const    { return((float)(slider->value())); } //! Returns slider value
+    void value(float val)   { slider->value(val); Slider_CB2(); } //! Sets slider value
+    void minumum(float val) { slider->minimum(val); } //! Sets minimum value
+    int  minumum() const  { return((float)slider->minimum()); }  //! Gets Maximum Value
+    void maximum(float val) { slider->maximum(val); } //! Sets Minimum Value
+    int  maximum() const  { return((int)slider->maximum()); } //! Sets Maximum Value
+    void bounds(float low, float high) { slider->bounds(low, high); } //! Set min/max bounds
 };
 
 #endif //FINALPROJECTBIOMED_SLIDERFLOATINPUT_H

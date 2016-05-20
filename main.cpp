@@ -1,3 +1,7 @@
+/*!
+ * @brief The main program. Sets up the UI and waits for user input. Also launches the actual processing
+ * @file
+ * */
 #include "itkScalarConnectedComponentImageFilter.h"
 #include "itkBinaryMorphologicalClosingImageFilter.h"
 #include "itkRelabelComponentImageFilter.h"
@@ -72,28 +76,17 @@
 
 using namespace std;
 
-// Define viewport ranges
-double xmins[4] = {0,.5,0,.5};
-double xmaxs[4] = {0.5,1,0.5,1};
-double ymins[4] = {0,0,.5,.5};
-double ymaxs[4]= {0.5,0.5,1,1};
-
-// Define viewport ranges
-double xmins2[3] = {0,0.33 , 0.66};
-double xmaxs2[3] = {0.33,0.66,1};
-double ymins2[3] = {0,0,0};
-double ymaxs2[3]= {1,1,1};
 
 
 
-const unsigned int      Dimension = 3;
-typedef float InputPixelType;
-typedef float  OutputPixelType;
-typedef itk::Image< InputPixelType, Dimension > InputImageType;
-typedef itk::Image< OutputPixelType, Dimension > OutputImageType;
-typedef itk::ImageToVTKImageFilter < InputImageType > ConnectorType;
+const unsigned int      Dimension = 3; //! The pixel dimension
+typedef float InputPixelType; //! typedef of input pixel
+typedef float  OutputPixelType; //! typedef of output pixel
+typedef itk::Image< InputPixelType, Dimension > InputImageType; //! typedef for the itk input image
+typedef itk::Image< OutputPixelType, Dimension > OutputImageType; //! typedef for itk output image
+typedef itk::ImageToVTKImageFilter < InputImageType > ConnectorType; //! typedef of connector from vtk to itk
 
-
+//! This function holds all the processing logic
 void process();
 
 
@@ -101,33 +94,34 @@ void process();
 
 
 
-UI* ui;
+UI* ui; //! The Uiser input window
 
 
 
-
+//! Custom class to interact with axial view
 class CustomInteractor : public vtkInteractorStyleImage
 {
 public:
-    static CustomInteractor* New();
+    static CustomInteractor* New(); //!Constructor
     vtkTypeMacro(CustomInteractor, vtkInteractorStyleImage);
 
 protected:
     //vtkImageViewer2* _ImageViewer;
-    vtkTextMapper* _StatusMapper;
-    vtkImageMapper* _ImageMapperLeft;
-    vtkImageMapper* _ImageMapperRight;
-    vtkRenderer* _ImageRendererLeft;
-    vtkRenderer* _ImageRendererRight;
-    vtkImageMapper* _ImageMapperRight2;
-    vtkRenderer* _ImageRendererRight2;
-    vtkRenderWindow* _RenderWindow;
+    vtkTextMapper* _StatusMapper; //! The text that shows the slice number
+    vtkImageMapper* _ImageMapperLeft; //! Left window mapper
+    vtkImageMapper* _ImageMapperRight; //! Middle mapper
+    vtkRenderer* _ImageRendererLeft; //! Left renderer
+    vtkRenderer* _ImageRendererRight; //! Middle Renderer
+    vtkImageMapper* _ImageMapperRight2; //! Rightmost mapper
+    vtkRenderer* _ImageRendererRight2; //! Rightmost renderer
+    vtkRenderWindow* _RenderWindow; //! The window
 
-    int _Slice;
-    int _MinSlice;
-    int _MaxSlice;
+    int _Slice; //! Current slice number
+    int _MinSlice; //! Max Slice
+    int _MaxSlice; //! Min Slice
 
 public:
+    //! Sets the image
     void SetImageViewer(vtkImageViewer2* imageViewer) {
         //_ImageViewer = imageViewer;
         //_MinSlice = imageViewer->GetSliceMin();
@@ -136,53 +130,62 @@ public:
         //cout << "Slicer: Min = " << _MinSlice << ", Max = " << _MaxSlice << std::endl;
     }
 
+    //! Sets the status display
     void SetStatusMapper(vtkTextMapper* statusMapper) {
         _StatusMapper = statusMapper;
 
     }
 
+    //! Gets min slice available
     int getMinSlice(){
         return _MinSlice;
     }
 
+    //! Gets max slice available
     int getMaxSlice(){
         return _MaxSlice;
     }
 
-
+    //! Sets the left most mapper
     void SetMapper1(vtkImageMapper* imageMapper){
         _ImageMapperLeft = imageMapper;
         _MinSlice = imageMapper->GetWholeZMin();
         _MaxSlice = imageMapper->GetWholeZMax();
         _Slice = _MinSlice;
     }
-
+    //! Sets middle mapper
     void SetMapper2(vtkImageMapper* imageMapper){
         _ImageMapperRight = imageMapper;
     }
 
+    //! Sets right mapper
     void SetMapper3(vtkImageMapper* imageMapper){
         _ImageMapperRight2 = imageMapper;
     }
 
+    //! Set left renerer
     void SetRenderer1(vtkRenderer* imageRenderer){
         _ImageRendererLeft = imageRenderer;
     }
 
+    //! Set right renderer
     void SetRenderer3(vtkRenderer* imageRenderer){
         _ImageRendererRight2 = imageRenderer;
     }
 
+    //! Set middler renderer
     void SetRenderer2(vtkRenderer* imageRenderer){
         _ImageRendererRight = imageRenderer;
     }
 
+    //! Set render window
     void SetRenderWindow(vtkRenderWindow* window){
         _RenderWindow = window;
     }
 
 
 protected:
+    //! Moves the slice forward by 1
     void MoveSliceForward() {
         if(_Slice < _MaxSlice) {
             _Slice += 1;
@@ -206,6 +209,7 @@ protected:
         }
     }
 
+    //! Moves slice back by one
     void MoveSliceBackward() {
         if(_Slice > _MinSlice) {
             _Slice -= 1;
@@ -225,6 +229,7 @@ protected:
     }
 
 
+    //! Callback for keypress
     virtual void OnKeyDown() {
         std::string key = this->GetInteractor()->GetKeySym();
         if(key.compare("Up") == 0) {
@@ -240,6 +245,7 @@ protected:
     }
 
 
+    //! Callback for mousewheel
     virtual void OnMouseWheelForward() {
         //std::cout << "Scrolled mouse wheel forward." << std::endl;
         MoveSliceForward();
@@ -249,6 +255,7 @@ protected:
     }
 
 
+    //!Calback for mousewheel
     virtual void OnMouseWheelBackward() {
         //std::cout << "Scrolled mouse wheel backward." << std::endl;
         if(_Slice > _MinSlice) {
@@ -274,7 +281,7 @@ vtkStandardNewMacro( CustomInteractor);
 
 int main(){
 
-    ui  = new UI();
+    ui  = new UI(); //! The initial
     ui->setProcessFunction(&process);
     return  Fl::run();
 
@@ -286,6 +293,19 @@ int main(){
 
 
 void process() {
+
+    //! Define viewport ranges
+    double xmins[4] = {0,.5,0,.5};
+    double xmaxs[4] = {0.5,1,0.5,1};
+    double ymins[4] = {0,0,.5,.5};
+    double ymaxs[4]= {0.5,0.5,1,1};
+
+    //! Define viewport ranges
+    double xmins2[3] = {0,0.33 , 0.66};
+    double xmaxs2[3] = {0.33,0.66,1};
+    double ymins2[3] = {0,0,0};
+    double ymaxs2[3]= {1,1,1};
+
 
     std::vector<vtkSmartPointer<vtkRenderWindowInteractor> > interactors;
 
@@ -307,7 +327,7 @@ void process() {
 
 
 
-    typedef std::vector< std::string >    SeriesIdContainer;
+    typedef std::vector< std::string >    SeriesIdContainer; //! Series typedef
     const SeriesIdContainer & seriesUID = nameGenerator->GetSeriesUIDs();
     std::cout << seriesUID.size() << std::endl;
     SeriesIdContainer::const_iterator seriesItr = seriesUID.begin();
