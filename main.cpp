@@ -190,7 +190,7 @@ int main(int argc, char **argv) {
      */
     int histogramLevel = 512;
     int histogramMatchPoints = 7;
-    int numberOfIterations = 50;
+    int numberOfIterations = 150;
     float standardDeviations = 1.0;
 
     typedef itk::CastImageFilter<FixedImageType, InternalImageType> FixedImageCasterType;
