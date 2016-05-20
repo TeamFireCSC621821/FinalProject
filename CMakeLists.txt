@@ -3,8 +3,34 @@ project(FinalProjectBiomed)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
-#include FLTK
-#INCLUDE_DIRECTORIES(/Users/mac/fltk-1.3.x-r11217)
+find_package(Doxygen)
+
+set(SOURCE_FILES main.cpp UI.cpp Fl_Justify_Input.cpp SliderInput.cpp SliderFloatInput.cpp)
+
+if(DOXYGEN_FOUND)
+
+    set(DOXYGEN_INPUT ${SOURCE_FILES})
+    set(DOXYGEN_OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile)
+
+    add_custom_command(
+            OUTPUT ${DOXYGEN_OUTPUT}
+            COMMAND ${CMAKE_COMMAND} -E echo_append "Building API Documentation..."
+            COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYGEN_INPUT}
+            COMMAND ${CMAKE_COMMAND} -E echo "Done."
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            DEPENDS ${DOXYGEN_INPUT}
+    )
+
+    add_custom_target(apidoc ALL DEPENDS ${DOXYGEN_OUTPUT})
+
+    add_custom_target(apidoc_forced
+            COMMAND ${CMAKE_COMMAND} -E echo_append "Building API Documentation..."
+            COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYGEN_INPUT}
+            COMMAND ${CMAKE_COMMAND} -E echo "Done."
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            )
+
+endif(DOXYGEN_FOUND)
 
 # Find ITK.
 set(FLTK_DIR /Users/mac/fltk-1.3.x-r11217)
@@ -25,7 +51,7 @@ include(${VTK_USE_FILE})
 FIND_PACKAGE(OpenGL REQUIRED)
 
 
-set(SOURCE_FILES main.cpp UI.cpp Fl_Justify_Input.cpp SliderInput.cpp SliderFloatInput.cpp)
+
 add_executable(FinalProjectBiomed ${SOURCE_FILES})
 
 target_link_libraries(FinalProjectBiomed ${ITK_LIBRARIES} ${VTK_LIBRARIES} ${FLTK_LIBRARIES} ${OPENGL_LIBRARIES} )
