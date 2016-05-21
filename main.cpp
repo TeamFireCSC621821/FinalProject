@@ -207,7 +207,7 @@ int process(char **argv) {
 	*/
 	int histogramLevel = 512;
 	int histogramMatchPoints = 6;
-	int numberOfIterations = 150;
+	int numberOfIterations = 50;
 	float standardDeviations = 0.5;
 
 	typedef itk::CastImageFilter<FixedImageType, InternalImageType> FixedImageCasterType;
@@ -306,8 +306,8 @@ int process(char **argv) {
 				seriesWriter->SetInput(warper->GetOutput());
 				seriesWriter->SetImageIO(movingDicomIO);
 
-				movingNameGenerator->SetOutputDirectory(outputDirectory);
-				seriesWriter->SetFileNames(movingNameGenerator->GetOutputFileNames());
+				fixedNameGenerator->SetOutputDirectory(outputDirectory);
+				seriesWriter->SetFileNames(fixedNameGenerator->GetOutputFileNames());
 
 				seriesWriter->SetMetaDataDictionaryArray(
 					movingImageReader->GetMetaDataDictionaryArray());
