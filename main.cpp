@@ -40,27 +40,7 @@
 #include "itkCheckerBoardImageFilter.h"
 #include "itkImageIterator.h"
 
-//Registration Imports
-#include "itkDemonsRegistrationFilter.h"
-#include "itkHistogramMatchingImageFilter.h"
-#include "itkCastImageFilter.h"
-#include "itkWarpImageFilter.h"
-
-//For Edge Preserving Smoothing
-
-#include "itkGradientAnisotropicDiffusionImageFilter.h"
-
-//Threshold Segmentation
-#include "itkThresholdSegmentationLevelSetImageFilter.h"
-#include "itkOtsuThresholdImageFilter.h"
-#include "itkThresholdImageFilter.h"
-#include "itkBinaryThresholdImageFilter.h"
-
 #include <iostream>
-#include <itkImageSeriesWriter.h>
-
-#include <string.h>
-#include <sstream>
 
 #include <itkAbsoluteValueDifferenceImageFilter.h>
 #include "itkIdentityTransform.h"
@@ -68,43 +48,35 @@
 
 using namespace std;
 
-// Define viewport ranges
+//! Define viewport ranges
 double xmins[4] = {0,.5,0,.5};
 double xmaxs[4] = {0.5,1,0.5,1};
 double ymins[4] = {0,0,.5,.5};
 double ymaxs[4]= {0.5,0.5,1,1};
 
-// Define viewport ranges
+//! Define viewport ranges
 double xmins2[2] = {0,.5};
 double xmaxs2[2] = {0.5,1};
 double ymins2[2] = {0,0};
 double ymaxs2[2]= {1,1};
 
 
-const unsigned int      Dimension = 3;
-typedef float InputPixelType;
-typedef float  OutputPixelType;
-typedef itk::Image< InputPixelType, Dimension > InputImageType;
-typedef itk::Image< OutputPixelType, Dimension > OutputImageType;
-typedef itk::ImageToVTKImageFilter < InputImageType > ConnectorType;
+const unsigned int      Dimension = 3;//! The pixel dimension
+typedef float InputPixelType; //! typedef of input pixel
+typedef float OutputPixelType; //! typedef of output pixel
+typedef float PixelType; //! typedef of all other pixels
+typedef itk::Image< PixelType, Dimension > FixedImageType; //! typedef for fixed image
+typedef itk::Image< PixelType, Dimension > MovingImageType;//! typedef for moving image
 
-//registration
-//const unsigned int Dimension = 3;
-typedef float PixelType;
-typedef itk::Image< PixelType, Dimension > FixedImageType;
-typedef itk::Image< PixelType, Dimension > MovingImageType;
+typedef itk::ImageSeriesReader< FixedImageType >        FixedImageReaderType;//! typedef for fixed image reader
+typedef itk::ImageSeriesReader< MovingImageType >        MovingImageReaderType;//! typedef for moving image reader
+typedef itk::ImageSeriesReader< MovingImageType >        RegisteredImageReaderType;//! typedef for registered image reader
+typedef itk::ImageToVTKImageFilter < FixedImageType > ConnectorType; //! typedef of connector from vtk to itk
 
-typedef itk::ImageSeriesReader< FixedImageType >        FixedImageReaderType;
-typedef itk::ImageSeriesReader< MovingImageType >        MovingImageReaderType;
-typedef itk::ImageSeriesReader< MovingImageType >        RegisteredImageReaderType;
-
-typedef itk::GradientAnisotropicDiffusionImageFilter<FixedImageType,FixedImageType > SmoothingFilterType;
-
-//checkerboard typedefs
-typedef itk::CheckerBoardImageFilter< FixedImageType > CheckerBoardFilterType;
+typedef itk::CheckerBoardImageFilter< FixedImageType > CheckerBoardFilterType;//!checkerboard typedefs
 
 
-// helper class to format slice status message
+//! helper class to format slice status message
 class StatusMessage {
 public:
     static std::string Format(int slice, int maxSlice) {
@@ -121,7 +93,6 @@ public:
     vtkTypeMacro(CustomInteractor, vtkInteractorStyleImage);
 
 protected:
-    //vtkImageViewer2* _ImageViewer;
     vtkTextMapper* _StatusMapper;
     vtkImageMapper* _ImageMapperLeft;
     vtkImageMapper* _ImageMapperRight;
@@ -135,11 +106,7 @@ protected:
 
 public:
     void SetImageViewer(vtkImageViewer2* imageViewer) {
-        //_ImageViewer = imageViewer;
-        //_MinSlice = imageViewer->GetSliceMin();
-        //_MaxSlice = imageViewer->GetSliceMax();
         _Slice = _MinSlice;
-        //cout << "Slicer: Min = " << _MinSlice << ", Max = " << _MaxSlice << std::endl;
     }
 
     void SetStatusMapper(vtkTextMapper* statusMapper) {
@@ -177,17 +144,12 @@ protected:
         if(_Slice < _MaxSlice) {
             _Slice += 1;
             cout << "MoveSliceForward::Slice = " << _Slice << std::endl;
-            //_ImageViewer->SetSlice(_Slice);
             _ImageMapperRight->SetZSlice(_Slice);
             _ImageMapperLeft->SetZSlice(_Slice);
             _ImageRendererLeft->Render();
             _ImageRendererRight->Render();
             _RenderWindow->Render();
             std::string msg = StatusMessage::Format(_Slice, _MaxSlice);
-            //_StatusMapper->SetInput(msg.c_str());
-            //_ImageViewer->Render();
-            //_ImageMapperLeft->Render();
-            //_ImageMapperRight->Render();
 
         }
     }
@@ -196,63 +158,46 @@ protected:
         if(_Slice > _MinSlice) {
             _Slice -= 1;
             cout << "MoveSliceBackward::Slice = " << _Slice << std::endl;
-            //_ImageViewer->SetSlice(_Slice);
             _ImageMapperLeft->SetZSlice(_Slice);
             _ImageMapperRight->SetZSlice(_Slice);
             _RenderWindow->Render();
-            //std::string msg = StatusMessage::Format(_Slice, _MaxSlice);
-            //_StatusMapper->SetInput(msg.c_str());
-            //_ImageViewer->Render();
         }
     }
-
 
     virtual void OnKeyDown() {
         std::string key = this->GetInteractor()->GetKeySym();
         if(key.compare("Up") == 0) {
-            //cout << "Up arrow key was pressed." << endl;
             MoveSliceForward();
         }
         else if(key.compare("Down") == 0) {
-            //cout << "Down arrow key was pressed." << endl;
             MoveSliceBackward();
         }
-        // forward event
+        //! forward event
         vtkInteractorStyleImage::OnKeyDown();
     }
 
 
     virtual void OnMouseWheelForward() {
-        //std::cout << "Scrolled mouse wheel forward." << std::endl;
         MoveSliceForward();
-        // don't forward events, otherwise the image will be zoomed
-        // in case another interactorstyle is used (e.g. trackballstyle, ...)
-        // vtkInteractorStyleImage::OnMouseWheelForward();
+        //! don't forward events, otherwise the image will be zoomed
+        //! in case another interactorstyle is used (e.g. trackballstyle, ...)
     }
 
 
     virtual void OnMouseWheelBackward() {
-        //std::cout << "Scrolled mouse wheel backward." << std::endl;
         if(_Slice > _MinSlice) {
             MoveSliceBackward();
         }
-        // don't forward events, otherwise the image will be zoomed
-        // in case another interactorstyle is used (e.g. trackballstyle, ...)
-        // vtkInteractorStyleImage::OnMouseWheelBackward();
+        //! don't forward events, otherwise the image will be zoomed
+        //! in case another interactorstyle is used (e.g. trackballstyle, ...)
     }
 };
 
-
-
 vtkStandardNewMacro( CustomInteractor);
-SmoothingFilterType::Pointer Smoothing(FixedImageReaderType::Pointer);
 
 
 int main(int argc, char **argv) {
-    //std::vector<vtkSmartPointer<vtkRenderWindowInteractor> > interactors;
-
     //This is for fixedImage loading
-    //typedef itk::Image< InputPixelType, Dimension > ImageType;
 
     typedef itk::GDCMImageIO       ImageIOType;
     ImageIOType::Pointer fixedDicomIO = ImageIOType::New();
@@ -273,12 +218,9 @@ int main(int argc, char **argv) {
     NamesGeneratorType::Pointer movingNameGenerator = NamesGeneratorType::New();
     NamesGeneratorType::Pointer registeredNameGenerator = NamesGeneratorType::New();
 
-    //nameGenerator->SetUseSeriesDetails( true );
-    //nameGenerator->AddSeriesRestriction("0008|0021" );
-
-    fixedNameGenerator->SetDirectory( "C:/Users/Guan/Desktop/images/GSM714050/Skull/CT");
-    movingNameGenerator->SetDirectory( "C:/Users/Guan/Desktop/images/GSM714050/Skull/PT");
-	registeredNameGenerator->SetDirectory("C:/Users/Guan/Documents/Visual Studio 2015/Projects/FinalProject/bin/Debug/output-512-7-1-10");
+    fixedNameGenerator->SetDirectory( argv[1]);
+    movingNameGenerator->SetDirectory(argv[2]);
+	registeredNameGenerator->SetDirectory(argv[3]);
 
     typedef std::vector< std::string >    SeriesIdContainer;
     const SeriesIdContainer & fixedSeriesUID = fixedNameGenerator->GetSeriesUIDs();
@@ -311,7 +253,6 @@ int main(int argc, char **argv) {
 
 
     //moving
-    //typedef std::vector< std::string >    SeriesIdContainer;
     const SeriesIdContainer & movingSeriesUID = movingNameGenerator->GetSeriesUIDs();
     std::cout << movingSeriesUID.size() << std::endl;
     SeriesIdContainer::const_iterator movingSeriesItr = movingSeriesUID.begin();
@@ -370,11 +311,12 @@ int main(int argc, char **argv) {
 	FixedImageType::SizeType inputSize = fixedImageReader->GetOutput()->GetLargestPossibleRegion().GetSize();
 	FixedImageType::SizeType outputSize = registeredImageReader->GetOutput()->GetLargestPossibleRegion().GetSize();
 	
-	//outputSize.Fill(200);
 	FixedImageType::SpacingType outputSpacing;
 	outputSpacing = registeredImageReader->GetOutput()->GetSpacing();
-	//outputSpacing[0] = fixedImageReader->GetOutput()->GetSpacing()[0] * (static_cast<double>(inputSize[0]) / static_cast<double>(outputSize[0]));
-	//outputSpacing[1] = fixedImageReader->GetOutput()->GetSpacing()[1] * (static_cast<double>(inputSize[1]) / static_cast<double>(outputSize[1]));
+
+	/*!
+	* Resize the image in order to fit to checkerboard and difference images
+	*/
 
 	typedef itk::IdentityTransform<double, Dimension> TransformType;
 	typedef itk::ResampleImageFilter<FixedImageType, FixedImageType> ResampleImageFilterType;
@@ -388,7 +330,7 @@ int main(int argc, char **argv) {
 	resample->SetTransform(TransformType::New());
 	resample->UpdateLargestPossibleRegion();
 
-    /*
+    /*!
     * CheckerBoard
     *
     */
@@ -398,7 +340,7 @@ int main(int argc, char **argv) {
     checkerBoardFilter->SetInput2(registeredImageReader->GetOutput());
     checkerBoardFilter->Update();
 	
-    /*
+    /*!
      * Difference Image
      *
      */
@@ -413,8 +355,8 @@ int main(int argc, char **argv) {
 	
     absoluteValueDifferenceFilter->Update();
 	cout << "after differenece update\n";
-	//while (true);
-    /**
+
+	/*!
     *
     * VTK
     *
@@ -449,9 +391,9 @@ int main(int argc, char **argv) {
 
 
 
-    // Create the renderer, the render window, and the interactor. The renderer
-    // draws into the render window, the interactor enables mouse- and
-    // keyboard-based interaction with the scene.
+    //! Create the renderer, the render window, and the interactor. The renderer
+    //! draws into the render window, the interactor enables mouse- and
+    //! keyboard-based interaction with the scene.
 
     vtkSmartPointer<vtkRenderer> rendererDifference = vtkSmartPointer<vtkRenderer>::New();
     vtkSmartPointer<vtkRenderer> rendererCheckerboard = vtkSmartPointer<vtkRenderer>::New();
@@ -491,17 +433,14 @@ int main(int argc, char **argv) {
 
     vtkSmartPointer<vtkColorTransferFunction>volumeColor =
          vtkSmartPointer<vtkColorTransferFunction>::New();
-       //volumeColor->AddRGBPoint(0,    0.0, 0.0, 0.0);
-       //volumeColor->AddRGBPoint(500,  1.0, 0.5, 0.3);
-      // volumeColor->AddRGBPoint(1000, 1.0, 0.5, 0.3);
-    //   volumeColor->AddRGBPoint(1150, 1.0, 1.0, 0.9);
+
     volumeColor->AddRGBPoint(1150,    0.0, 0.0, 0.0);
     volumeColor->AddRGBPoint(1000,  1.0, 0.5, 0.3);
     volumeColor->AddRGBPoint(500, 1.0, 0.5, 0.3);
     volumeColor->AddRGBPoint(0, 1.0, 1.0, 0.9);
 
 
-    // The opacity transfer function is used to control the opacity
+    //! The opacity transfer function is used to control the opacity
        // of different tissue types.
     vtkSmartPointer<vtkPiecewiseFunction> volumeScalarOpacity =
          vtkSmartPointer<vtkPiecewiseFunction>::New();
@@ -510,16 +449,12 @@ int main(int argc, char **argv) {
     volumeScalarOpacity->AddPoint(1000, 0.15);
     volumeScalarOpacity->AddPoint(1150, 0.85);
 
-    //volumeScalarOpacity->AddPoint(1150,    0.00);
-    //volumeScalarOpacity->AddPoint(1000,  0.15);
-    //volumeScalarOpacity->AddPoint(500, 0.15);
-    //volumeScalarOpacity->AddPoint(0, 0.85);
 
-       // The gradient opacity function is used to decrease the opacity
-       // in the "flat" regions of the volume while maintaining the opacity
-       // at the boundaries between tissue types.  The gradient is measured
-       // as the amount by which the intensity changes over unit distance.
-       // For most medical data, the unit distance is 1mm.
+       //! The gradient opacity function is used to decrease the opacity
+       //! in the "flat" regions of the volume while maintaining the opacity
+       //! at the boundaries between tissue types.  The gradient is measured
+       //! as the amount by which the intensity changes over unit distance.
+       //! For most medical data, the unit distance is 1mm.
        vtkSmartPointer<vtkPiecewiseFunction> volumeGradientOpacity =
          vtkSmartPointer<vtkPiecewiseFunction>::New();
        volumeGradientOpacity->AddPoint(0,   0.0);
@@ -537,8 +472,8 @@ int main(int argc, char **argv) {
        volumeProperty->SetAmbient(0.4);
        volumeProperty->SetDiffuse(0.6);
        volumeProperty->SetSpecular(0.2);
-       // The vtkVolume is a vtkProp3D (like a vtkActor) and controls the position
-       // and orientation of the volume in world coordinates.
+       //! The vtkVolume is a vtkProp3D (like a vtkActor) and controls the position
+       //! and orientation of the volume in world coordinates.
     vtkSmartPointer<vtkVolume> volumeFixed =
             vtkSmartPointer<vtkVolume>::New();
     volumeFixed->SetMapper(volumeMapperFixed);
@@ -671,30 +606,4 @@ int main(int argc, char **argv) {
 
 
     return 0;
-}
-
-
-SmoothingFilterType::Pointer Smoothing(FixedImageReaderType::Pointer reader){
-
-    SmoothingFilterType::Pointer filter = SmoothingFilterType::New();
-
-    filter->SetInput( reader->GetOutput() );
-    filter->SetNumberOfIterations( 1 );
-    filter->SetTimeStep( 0.01 );
-    filter->SetConductanceParameter( 3.0 );
-
-
-
-    try
-    {
-        filter->Update();
-    }
-    catch( itk::ExceptionObject & error )
-    {
-        std::cerr << "Error: " << error << std::endl;
-        exit(-1);
-    }
-
-    return filter;
-
 }
